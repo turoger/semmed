@@ -1,24 +1,42 @@
 #!/bin/bash
 
-USERNAME=$1
-PASSWORD=$2
+#
+# Download the umls file. Make sure to input your API-Key in download_from_umpls_api.sh
+#
+echo "Downloading umls-2021AA metathesaurus"
+bash download_from_umls_api.sh https://download.nlm.nih.gov/umls/kss/2021AA/umls-2021AA-full.zip
 
-# Download the umls meathesaurus
-./curl-uts-download.sh $USERNAME $PASSWORD https://download.nlm.nih.gov/umls/kss/2018AA/umls-2018AA-full.zip
 
+#
 # Unzip to the datadir
-unzip umls-2018AA-full.zip -d ../data/
+#
+echo "Unzipping the metathesaurus file"
+unzip umls-2021AA-full.zip -d ../data/
 
+
+#
 # Look at the MD5 Sums
-cd ../data/2018AA-full/
-md5sum -c 2018AA.MD5
+#
+echo "Checking md5 checksum"
+cd ../data/2021AA-full/
+md5sum -c 2021AA.MD5
 
+
+#
 # The actual metathesaurs is contained in a zipped files
-unzip 2018aa-1-meta.nlm
-unzip 2018aa-2-meta.nlm
+#
+echo "unzip the meta thesaurasus files"
 
+unzip 2021aa-1-meta.nlm
+unzip 2021aa-2-meta.nlm
+
+
+#
 # Some of the metathesaurus files are split, so need to be catted back together
-cd 2018AA/META
+#
+echo "Catting the metathesaurus files back together"
+
+cd 2021AA/META
 for FILE in MRCONSO MRHIER MRREL MRSAT MRXNW_ENG MRXW
 do
     # Cat the pieces together

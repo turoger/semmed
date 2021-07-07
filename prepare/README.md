@@ -23,9 +23,12 @@ To ensure all scripts run properly, please enable the virtual enviornment before
 
 ## Requirments
 
-`download_umls.sh` requires a UMLS account with your id and password
+* `download_umls.sh` requires a UMLS account api-key. Get your api-key by logging onto UMLS and going to your settings. Paste the key into the `API` variable in `./download_from_umls_api.sh`
 
-`download_drugcentral.sh` requires PostgreSQL to be installed on the system.
-This dump was created with PostgreSQL 10, however it appears to work with 9.5 as well.
+* `download_drugcentral.sh` requires PostgreSQL to be installed on the system.
+	* This dump was created with PostgreSQL 10, however it appears to work with 9.5 as well.
+	* To install PostgreSQL, please follow instructions outlined here: https://www.postgresql.org/download/linux/ubuntu/
+	* `sudo service postgresql start` to start PostgreSQL service
+	* `sudo service postgresql stop` to kill the service 
 
-`download_semmeddb.sh` uses the program pv to view progress as it converts the SQL dump to a .csv file
+* `download_semmeddb.sh` uses the program pv to view progress as it converts the SQL dump to a .csv file

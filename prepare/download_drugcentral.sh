@@ -1,8 +1,8 @@
 #!/bin/bash
 
-DUMPDATE=06212018
+DUMPDATE=20200918
 
-wget http://iridium.noip.me/drugcentral.dump.$DUMPDATE.sql.gz -O ../data/drugcentral.dump.$DUMPDATE.sql.gz
+#wget http://unmtid-shinyapps.net/download/drugcentral-pgdump_$DUMPDATE.sql.gz -O ../data/drugcentral.dump.$DUMPDATE.sql.gz
 
 # The remainer of this file requires postgreSQL to be installed and running on the mchine
 createdb drugcentral_$DUMPDATE

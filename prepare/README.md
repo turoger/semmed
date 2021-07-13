@@ -13,22 +13,20 @@ To ensure all scripts run properly, please enable the virtual enviornment before
 
 ### The following scripts must be run for the rest of the pipline to work
 
-1. `./download_semmeddb.sh`
-2. `./download_umls.sh {umls_usnername} {umls_password}`
-3. `./download_baseline.sh`
-4. `./get_semtype_files.sh`
-5. `./download_drugcentral.sh`
+1. `./download_requirements.sh`
+2. `./download_baseline.sh`
+3. `./get_semtype_files.sh`
 
 ### After running the scripts above, run the jupyter notebooks in order
 
 ## Requirments
+* `./scripts/download_semmeddb.sh` uses the program pv to view progress as it converts the SQL dump to a .csv file
 
-* `download_umls.sh` requires a UMLS account api-key. Get your api-key by logging onto UMLS and going to your settings. Paste the key into the `API` variable in `./download_from_umls_api.sh`
+* `./scripts/download_umls.sh` requires a UMLS account api-key. Get your api-key by logging onto UMLS and going to your settings. Paste the key into the `apikey` variable in `./download_requirements.sh`
 
-* `download_drugcentral.sh` requires PostgreSQL to be installed on the system.
+* `./scripts/download_drugcentral.sh` requires PostgreSQL to be installed on the system.
 	* This dump was created with PostgreSQL 10, however it appears to work with 9.5 as well.
 	* To install PostgreSQL, please follow instructions outlined here: https://www.postgresql.org/download/linux/ubuntu/
 	* `sudo service postgresql start` to start PostgreSQL service
 	* `sudo service postgresql stop` to kill the service 
-
-* `download_semmeddb.sh` uses the program pv to view progress as it converts the SQL dump to a .csv file
+	* add your psql server information to the appropriate variables in `./download_requirements.sh`

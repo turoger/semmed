@@ -1,24 +1,26 @@
 #!/bin/bash
 
+apikey=$1
+
 #
 # Download the umls file. Make sure to input your API-Key in download_from_umpls_api.sh
 #
 echo "Downloading umls-2021AA metathesaurus"
-bash download_from_umls_api.sh https://download.nlm.nih.gov/umls/kss/2021AA/umls-2021AA-full.zip
+bash download_from_umls_api.sh --api $apikey --link https://download.nlm.nih.gov/umls/kss/2021AA/umls-2021AA-full.zip
 
 
 #
 # Unzip to the datadir
 #
 echo "Unzipping the metathesaurus file"
-unzip umls-2021AA-full.zip -d ../data/
+unzip umls-2021AA-full.zip -d ../../data/
 
 
 #
 # Look at the MD5 Sums
 #
 echo "Checking md5 checksum"
-cd ../data/2021AA-full/
+cd ../../data/2021AA-full/
 md5sum -c 2021AA.MD5
 
 

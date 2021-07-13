@@ -7,7 +7,7 @@ data/*
 201*AA-full
 ml/*
 !ml/README.md
-
+!prepare/scripts/postgreSQL_server_info.txt
 
 
 ##################################################################################

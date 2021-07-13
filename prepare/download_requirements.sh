@@ -35,6 +35,11 @@ bash download_umls.sh $apikey
 # Get Semmed
 bash download_semmeddb.sh $apikey
 
+# Get Semmed doc types
+bash get_semtype_files.sh 
+
 # Get Drug Central
 bash download_drugcentral.sh --host $HOST --port $PORT --user $USER
 
+# Get baseline
+bash download_baseline.sh

@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Make the baseline directory for download
-mkdir -p ../data/baseline
-cd ../data/baseline
+mkdir -p ../../data/baseline
+cd ../../data/baseline
 
 # Download all the files
 wget -r ftp://ftp.ncbi.nlm.nih.gov/pubmed/baseline/

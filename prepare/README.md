@@ -11,15 +11,15 @@ run the shell scripts first, then run the ipython notebooks.
 To ensure all scripts run properly, please enable the virtual enviornment before running
 
 
-### The following scripts must be run for the rest of the pipline to work
+### The following script must be run for the rest of the pipline to work
 
-1. `./download_requirements.sh`
-2. `./download_baseline.sh`
-3. `./get_semtype_files.sh`
+* `./download_requirements.sh`
+* This script will download all the appropriate files automatically.
+* Please add your personal UMLS apikey as well as PostgreSQL server information to the script prior to running it.
 
 ### After running the scripts above, run the jupyter notebooks in order
 
-## Requirments
+## Requirments for `./download_requirements.sh`
 * `./scripts/download_semmeddb.sh` uses the program pv to view progress as it converts the SQL dump to a .csv file
 
 * `./scripts/download_umls.sh` requires a UMLS account api-key. Get your api-key by logging onto UMLS and going to your settings. Paste the key into the `apikey` variable in `./download_requirements.sh`

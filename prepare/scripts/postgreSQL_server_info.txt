@@ -1,3 +1,0 @@
-HOST='su07'
-PORT=5432
-USER='root'

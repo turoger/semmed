@@ -29,12 +29,12 @@ fi
 
 
 # Get UMLS
-#cd ./scripts
-#bash download_umls.sh $apikey
+cd ./scripts
+bash download_umls.sh $apikey
 
 # Get Semmed
-#bash download_semmeddb.sh $apikey
+bash download_semmeddb.sh $apikey
 
 # Get Drug Central
-#bash download_drugcentral.sh --host $HOST --port $PORT --user $USER
+bash download_drugcentral.sh --host $HOST --port $PORT --user $USER
 

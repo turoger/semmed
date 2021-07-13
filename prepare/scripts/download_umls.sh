@@ -6,7 +6,7 @@ apikey=$1
 # Download the umls file. Make sure to input your API-Key in download_from_umpls_api.sh
 #
 echo "Downloading umls-2021AA metathesaurus"
-bash download_from_umls_api.sh --api $apikey --link https://download.nlm.nih.gov/umls/kss/2021AA/umls-2021AA-full.zip
+bash download_from_umls_api.sh --apikey $apikey --link https://download.nlm.nih.gov/umls/kss/2021AA/umls-2021AA-full.zip
 
 
 #

@@ -46,10 +46,6 @@ fi
 # turn inputs into an array
 vars=($@)
 
-#for i in "${!vars[@]}";do
-#	echo "${vars[i]}"
-#done
-
 # store options
 for i in "${!vars[@]}"
 do

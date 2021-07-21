@@ -8,12 +8,12 @@ apikey=$1
 
 
 NEW_FILE='../../data/semmedVER43_R.csv'
-OUT_FILE='../../data/semmedVER43_2021_R_PREDICATION.sql.gz'
+OUT_FILE='../../data/semmedVER43_2021_R_PREDICATION.csv.gz'
 
 echo "downloading semmed files from UMLS to:"
 echo $OUT_FILE
 
-bash download_from_umls_api.sh --apikey $apikey --link https://data.lhncbc.nlm.nih.gov/umls-restricted/ii/tools/SemRep_SemMedDB_SKR/semmedVER43_2021_R_PREDICATION.sql.gz
+bash download_from_umls_api.sh --apikey $apikey --link https://data.lhncbc.nlm.nih.gov/umls-restricted/ii/tools/SemRep_SemMedDB_SKR/semmedVER43_2021_R_PREDICATION.csv.gz
 
 mv semmedVER43_2021_R_PREDICATION.sql.gz* $OUT_FILE
 
@@ -25,8 +25,7 @@ cp ../../data/col_names.txt $NEW_FILE
 
 
 #
-# pv allows progress to be monitored, if pv is not installed call the following line instead:
+# Unzip files and combine them
 #
-echo "Processing sql.gz"
-#zcat ../data/semmedVER43_2021_R_PREDICATION.sql.gz | python ../mysqldump_to_csv.py >> $NEW_FILE
-pv $OUT_FILE | zcat | python ../mysqldump_to_csv.py >> $NEW_FILE
+echo "Adding headers to ${NEW_FILE} and decompressing it"
+pv | zcat -cd $OUT_FILE | cat >> $NEW_FILE

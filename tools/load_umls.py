@@ -12,7 +12,7 @@ def read_rrf_file(filename, data_dir='../data', col_names=None):
     return: DataFrame, the data
     """
     # Put together the full filename
-    load_file = os.path.join(data_dir, '2018AA-full/2018AA/META/', filename)
+    load_file = os.path.join(data_dir, '2021AA-full/2021AA/META/', filename)
 
     # Read the file
     data = pd.read_csv(load_file, sep='|', header=None)

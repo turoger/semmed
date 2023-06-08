@@ -38,8 +38,8 @@ Help()
 # assign vars with short or long form flags
 #
 TEMP=$(getopt \
-    --options a:H:u:p:n::h:: \
-    --long apikey:,host:,user:,port:,negative::,help::\
+    --options a:H:P:u:p:n::h:: \
+    --long apikey:,host:,pass:,user:,port:,negative::,help::\
     --name 'build' -- "$@"
     )
     

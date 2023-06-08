@@ -21,11 +21,12 @@ Help()
 	""
 	"Options:"
 	"	--host, -H			postgreSQL host name"
+    "   --pass, -P			postgreSQL password"
 	"	--port, -p			postgreSQL port number"
 	"	--user, -u			postgreSQL user login"
-	"	--apikey, -a			UMLS apikey"
+	"	--apikey, -a		UMLS apikey"
 	"	--help, -h			optional, usage information"
-	"	--negative, -n			optional, data generated will keep negative relations with this flag, default without the flag will remove negative relations"
+	"	--negative, -n		optional, data generated will keep negative relations with this flag, default without the flag will remove negative relations"
     ""
     "NOTE:"
     "This code base is in development and has no guarantees. Use at your own risk."
@@ -46,6 +47,7 @@ if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
 
 APIKEY=
 PORT=
+PASS=
 HOST=
 USER=
 KEEP_NEGATIVE_EDGES=0
@@ -61,6 +63,10 @@ while true; do
         -H| --host) 
             HOST="$2";
             echo "HOST:      $HOST";
+            shift 2 ;;
+        -P| --pass) 
+            PASS="$2";
+            echo "PASS:      $PASS";
             shift 2 ;;
         -p| --port)
             PORT="$2";
@@ -82,11 +88,12 @@ done
 #
 # Check for missing inputs
 #
-if [[ -z $APIKEY || -z $HOST || -z $USER || -z $PORT ]]; then
+if [[ -z $APIKEY || -z $HOST || -z $PASS || -z $USER || -z $PORT ]]; then
     echo "ERROR: Missing APIKEY or HOST or USER input"
     echo "Please provide:"
     if [[ -z $APIKEY ]];then echo "    APIKEY (-a)"; fi
     if [[ -z $HOST ]]; then echo "    HOST (-H)"; fi
+    if [[ -z $PASS ]];then echo "    PASS (-P)"; fi
     if [[ -z $PORT ]]; then echo "    PORT (-p)"; fi
     if [[ -z $USER ]]; then echo "    USER (-u)"; fi
     echo "See Help (-h) for more information"
@@ -95,7 +102,7 @@ fi
 
 # Get UMLS
 cd ./0_prepare/scripts
-# bash download_umls.sh $apikey
+bash download_umls.sh $apikey
 
 # Get Semmed
 bash download_semmeddb.sh $apikey
@@ -104,7 +111,7 @@ bash download_semmeddb.sh $apikey
 bash get_semtype_files.sh 
 
 # Get Drug Central
-bash download_drugcentral.sh --host $HOST --port $PORT --user $USER
+bash download_drugcentral.sh --host $HOST --port $PORT --user $USER --pass $PASS
 
 # Get baseline
 bash download_baseline.sh

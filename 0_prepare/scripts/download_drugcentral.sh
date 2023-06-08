@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Fill in the following for location of your postgreSQL server
-DUMPDATE=20211005
+DUMPDATE=20220822
 DUMPDIR='../../data/drugcentral_'
 #DUMPDIR=$(pwd | xargs dirname)'/data/drugcentral_'
 SCRIPT='download_drugcentral.sh'
@@ -22,6 +22,7 @@ Help(){
 	""
 	"Options:"
 	"	--host, -H	host name"
+    "   --pass, -P  password"
 	"	--port, -p	port number"
 	"	--user, -u	user login"
     "	--help, -h	optional, usage information"
@@ -37,7 +38,7 @@ then
 	echo "ERROR: Please check for missing inputs"
 	echo ""
 	Help
-elif [ $# -gt 6 ];
+elif [ $# -gt 8 ];
 then
 	echo "ERROR: Too many inputs: $# given"
 	echo ""
@@ -48,11 +49,12 @@ fi
 # Process flagging
 #
 TEMP=$(getopt \
-    --options H:p:u:h:: \
-    --long host:,port:,user:,help:: \
+    --options H:P:p:u:h:: \
+    --long host:,pass:,port:,user:,help:: \
     --name 'download_drugcentral' -- "$@"
     )
     
+PASS=
 PORT=
 HOST=
 USER=
@@ -61,6 +63,10 @@ while true; do
     case "$1" in
         -h | --help)
             Help; exit;;
+        -P | --pass)
+            PASS="$2";
+            echo "PASS:  $PASS";
+            shift 2 ;;
         -p | --port)
             PORT="$2";
             echo "PORT:  $PORT";
@@ -83,17 +89,19 @@ done
 # Download the Drug Central Dump
 #
 echo "Downloading Drug Central Dump"
-wget -c -N https://unmtid-shinyapps.net/download/drugcentral.dump.010_05_2021.sql.gz -O ../../data/drugcentral.dump.$DUMPDATE.sql.gz
+wget -c -N https://unmtid-shinyapps.net/download/drugcentral.dump.08222022.sql.gz -O ../../data/drugcentral.dump.$DUMPDATE.sql.gz
 
 
 #
 # The remainer of this file requires postgreSQL to be installed and running on the machine
+# Make sure your USER has appropriate permissions. Login to your postgres and elevate user 
+# with `alter user $USER createdb;`
 #
 echo "Creating postgreSQL database at ${HOST}:${PORT} as user: ${USER}"
-createdb drugcentral_$DUMPDATE -h $HOST -p $PORT -U $USER
+PGPASSWORD=$PASS createdb drugcentral_$DUMPDATE -h $HOST -p $PORT -U $USER
 
 echo "Unzipping drugcentral dataset dump ${DUMPDATE}"
-gunzip < ../../data/drugcentral.dump.$DUMPDATE.sql.gz | psql drugcentral_$DUMPDATE -h $HOST -p $PORT -U $USER
+gunzip < ../../data/drugcentral.dump.$DUMPDATE.sql.gz | PGPASSWORD=$PASS psql drugcentral_$DUMPDATE -h $HOST -p $PORT -U $USER
 
 cd ../../data
 DUMPDIR=$(pwd)'/drugcentral_'
@@ -102,21 +110,21 @@ DUMPDIR=$(pwd)'/drugcentral_'
 # Copy the required tables to disk for easy reading
 #
 echo "Copying 'omop_relations' to 'rel'"
-psql -U $USER -h $HOST -p $PORT -d drugcentral_$DUMPDATE -c "\COPY omop_relationship TO '${DUMPDIR}rel_${DUMPDATE}.csv' DELIMITER ',' CSV HEADER"
+PGPASSWORD=$PASS psql -U $USER -h $HOST -p $PORT -d drugcentral_$DUMPDATE -c "\COPY omop_relationship TO '${DUMPDIR}rel_${DUMPDATE}.csv' DELIMITER ',' CSV HEADER"
 
 echo "Copying 'identifier' to 'ids'"
-psql -U $USER -h $HOST -p $PORT -d drugcentral_$DUMPDATE -c "\COPY identifier TO '${DUMPDIR}ids_${DUMPDATE}.csv' DELIMITER ',' CSV HEADER"
+PGPASSWORD=$PASS psql -U $USER -h $HOST -p $PORT -d drugcentral_$DUMPDATE -c "\COPY identifier TO '${DUMPDIR}ids_${DUMPDATE}.csv' DELIMITER ',' CSV HEADER"
 
 echo "Copying 'approval' to 'approvals'"
-psql -U $USER -h $HOST -p $PORT -d drugcentral_$DUMPDATE -c "\COPY approval TO '${DUMPDIR}approvals_${DUMPDATE}.csv' DELIMITER ',' CSV HEADER"
+PGPASSWORD=$PASS psql -U $USER -h $HOST -p $PORT -d drugcentral_$DUMPDATE -c "\COPY approval TO '${DUMPDIR}approvals_${DUMPDATE}.csv' DELIMITER ',' CSV HEADER"
 
 echo "Copying 'synonyms' to 'syn'"
-psql -U $USER -h $HOST -p $PORT -d drugcentral_$DUMPDATE -c "\COPY synonyms TO '${DUMPDIR}syn_${DUMPDATE}.csv' DELIMITER ',' CSV HEADER"
+PGPASSWORD=$PASS psql -U $USER -h $HOST -p $PORT -d drugcentral_$DUMPDATE -c "\COPY synonyms TO '${DUMPDIR}syn_${DUMPDATE}.csv' DELIMITER ',' CSV HEADER"
 
 echo "Copying 'atc' to 'atc'"
-psql -U $USER -h $HOST -p $PORT -d drugcentral_$DUMPDATE -c "\COPY atc TO '${DUMPDIR}atc_${DUMPDATE}.csv' DELIMITER ',' CSV HEADER"
+PGPASSWORD=$PASS psql -U $USER -h $HOST -p $PORT -d drugcentral_$DUMPDATE -c "\COPY atc TO '${DUMPDIR}atc_${DUMPDATE}.csv' DELIMITER ',' CSV HEADER"
 
 echo "Copying 'atc_ddd' to 'atc-ddd'"
-psql -U $USER -h $HOST -p $PORT -d drugcentral_$DUMPDATE -c "\COPY atc_ddd TO '${DUMPDIR}atc-ddd_${DUMPDATE}.csv' DELIMITER ',' CSV HEADER"
+PGPASSWORD=$PASS psql -U $USER -h $HOST -p $PORT -d drugcentral_$DUMPDATE -c "\COPY atc_ddd TO '${DUMPDIR}atc-ddd_${DUMPDATE}.csv' DELIMITER ',' CSV HEADER"
 
 echo "Done downloading and processing download_drugcentral.sh"

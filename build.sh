@@ -102,10 +102,10 @@ fi
 
 # Get UMLS
 cd ./0_prepare/scripts
-bash download_umls.sh $apikey
+bash download_umls.sh $APIKEY
 
 # Get Semmed
-bash download_semmeddb.sh $apikey
+bash download_semmeddb.sh $APIKEY
 
 # Get Semmed doc types
 bash get_semtype_files.sh 

@@ -28,47 +28,54 @@ Help(){
 }
 
 
-# 2. check if missing options
-if [ $# -eq 0 ];
-then
-	echo "Please check for missing options"
-	echo ""
-	Help
+#
+# 2. assign vars with short or long form flags
+#
+TEMP=$(getopt \
+    --options l:a:h:: \
+    --long link:,apikey:,help:: \
+    --name 'download_from_umls_api' -- "$@"
+    )
+if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1; fi
 
-elif [ $# -gt 4 ];
-then
-	echo "Too many inputs: $# given"
-	echo ""
-	Help
-fi
-
-
-# turn inputs into an array
-vars=($@)
-
-# store options
-for i in "${!vars[@]}"
-do
-	if [[ "${vars[i]}" = '--link' || "${vars[i]}" = '-l' ]]
-	then
-		echo "DOWNLOAD_URL: ${vars[i+1]}"
-		export DOWNLOAD_URL="${vars[i+1]}"	
-	elif [[ "${vars[i]}" = '--apikey' || "${vars[i]}" = '-a' ]]
-	then
-		echo "apikey: ${vars[i+1]}"
-		export apikey="${vars[i+1]}"
-	elif [[ "${vars[i]}" = '--help' || "${vars[i]}" = '-h'  ]]
-	then
-		Help
-		exit 0
-	
-	fi
+DOWNLOAD_URL=
+APIKEY=
+eval set --"$TEMP"
+while true; do
+    case "$1" in
+        -h| --help)
+            Help; exit ;;
+        -l| --link)
+            DOWNLOAD_URL="$2";
+            echo "DOWNLOAD_URL:      $DOWNLOAD_URL";
+            shift 2 ;;
+        -a| --apikey)
+            APIKEY="$2";
+            echo "APIKEY:      $APIKEY";
+            shift 2 ;;
+        -- ) shift; break ;;
+        *) echo "ERROR: Invalid Option"; Help; exit 1 ;;
+    esac
 done
 
 #
-# 3. Get your Ticket and your TGT value
+# 3. Check for missing inputs
 #
-TGT=$(curl -d "apikey="$apikey -H "Content-Type: application/x-www-form-urlencoded" -X POST https://utslogin.nlm.nih.gov/cas/v1/api-key)
+if [[ -z $APIKEY || -z $DOWNLOAD_URL ]]; then
+    echo "ERROR: Missing APIKEY or DOWNLOAD_URL"
+    echo "Please provide:"
+    if [[ -z $APIKEY ]];then echo "    APIKEY (-a)"; fi
+    if [[ -z $DOWNLOAD_URL ]]; then echo "    LINK (-l)"; fi
+    echo "See Help (-h) for more information"
+    exit 1
+fi
+
+#
+# 4. Get your Ticket and your TGT value
+#
+
+echo "Retrieving Ticket Granting Ticket"
+TGT=$(curl -d "apikey="$APIKEY -H "Content-Type: application/x-www-form-urlencoded" -X POST https://utslogin.nlm.nih.gov/cas/v1/api-key)
 
 TGTTICKET=$(echo $TGT | tr "=" "\n")
 
@@ -81,11 +88,11 @@ do
 done
 
 #
-# 4. Get service given your TGT value
+# 5. Get service given your TGT value
 #
-echo $TGTVALUE
+echo "Ticket Granting Ticket: $TGTVALUE"
 STTICKET=$(curl -d "service="$DOWNLOAD_URL -H "Content-Type: application/x-www-form-urlencoded" -X POST https://utslogin.nlm.nih.gov/cas/v1/tickets/$TGTVALUE)
 
-echo $STTICKET
+echo "Service Ticket: $STTICKET"
 curl -c cookie.txt -b cookie.txt -L -O -J $DOWNLOAD_URL?ticket=$STTICKET
 rm cookie.txt

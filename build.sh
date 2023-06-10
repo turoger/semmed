@@ -11,7 +11,7 @@ Help()
 	"Description: Downloads SemMedDB, UMLS, and Drug Central to create a time-resolved drug repositioning framework."
     "	* SemMedDB version: 43"
     "	* UMLS version: "
-    "	* Drug Central dump: 2021 Oct 05"
+    "	* Drug Central dump: 2022 August 22"
     ""
 	"Usage: $SCRIPT [options] <command> [args]"
 	""
@@ -128,5 +128,7 @@ else
 python ./scripts/01_build_hetnet_and_drop_neg_relation.py
 fi
 
-# run rest of the pipeline
+#
+# run rest of the pipeline. Please check flags to make sure version drugcentral and semmed downloaded matches
+# 
 bash 00-execute_build.sh

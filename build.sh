@@ -89,7 +89,7 @@ done
 # Check for missing inputs
 #
 if [[ -z $APIKEY || -z $HOST || -z $PASS || -z $USER || -z $PORT ]]; then
-    echo "ERROR: Missing APIKEY or HOST or USER input"
+    echo "ERROR: Missing APIKEY or HOST or PASS or USER or PORT input"
     echo "Please provide:"
     if [[ -z $APIKEY ]];then echo "    APIKEY (-a)"; fi
     if [[ -z $HOST ]]; then echo "    HOST (-H)"; fi
@@ -131,4 +131,4 @@ fi
 #
 # run rest of the pipeline. Please check flags to make sure version drugcentral and semmed downloaded matches
 # 
-bash 00-execute_build.sh
+bash 00-execute_build.sh --dc_date '20220822' --semmed_version 'VER43_R' --base_dir '../date/time_networks-6_metanode'

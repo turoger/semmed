@@ -42,5 +42,8 @@ cd 2023AA/META
 for FILE in MRCONSO MRHIER MRREL MRSAT MRXNW_ENG MRXW
 do
     # Cat the pieces together
-    zcat $(ls | grep $FILE) > $FILE.RRF
+    zcat $(ls|grep $FILE) | \
+    tqdm --desc "Processing $FILE" --bytes \
+    --total `du -cb $(ls|grep $FILE)|grep total|awk '{print $1}'` \
+    > $FILE.RRF; done
 done

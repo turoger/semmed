@@ -1,7 +1,7 @@
 import os
-import pandas as pd
+import polars as pl
 
-def read_rrf_file(filename, data_dir='../data', col_names=None):
+def read_rrf_file(filename, data_dir='../data/2023AA-full/2023AA/META/', col_names=None):
     """
     Opens any RRF file in the UMLS Metathesuarus
 
@@ -12,13 +12,11 @@ def read_rrf_file(filename, data_dir='../data', col_names=None):
     return: DataFrame, the data
     """
     # Put together the full filename
-    load_file = os.path.join(data_dir, '2021AA-full/2021AA/META/', filename)
+    load_file = os.path.join(data_dir, filename)
 
     # Read the file
-    data = pd.read_csv(load_file, sep='|', header=None)
-
     # Lines end in pipe, so extra column will exist that needs to be dropped
-    data = data.iloc[:, :-1]
+    data = pl.read_csv(load_file, separator = '|', has_header=False, ignore_errors= True,new_columns = col_names, truncate_ragged_lines=True)[:,:-1]
 
     # Set the proper column names
     if col_names is None:
@@ -28,7 +26,7 @@ def read_rrf_file(filename, data_dir='../data', col_names=None):
     return data
 
 
-def get_colnames(filename, data_dir='../data'):
+def get_colnames(filename, data_dir='../data/2023AA-full/2023AA/META/'):
     # Column names for the file information file
     col_names = ['FIL', 'DES', 'FMT', 'CLS', 'RWS', 'BTS']
     metadata = read_rrf_file('MRFILES.RRF.gz', data_dir, col_names)
@@ -38,13 +36,13 @@ def get_colnames(filename, data_dir='../data'):
         filename = filename[:-3]
 
     # Find the line for the given file and process the column names
-    col_names_out = metadata.query('FIL == @filename')['FMT'].values[0]
+    col_names_out = metadata.filter(pl.col('FIL')==filename)['FMT'][0]
     col_names_out = col_names_out.split(',')
 
     return col_names_out
 
 
-def open_mrconso(data_dir='../data'):
+def open_mrconso(data_dir='../data/2023AA-full/2023AA/META/'):
     """
     Opens the Cocepts file from the UMLS Metahesaurus
 
@@ -55,7 +53,7 @@ def open_mrconso(data_dir='../data'):
     return read_rrf_file('MRCONSO.RRF', data_dir)
 
 
-def open_mrcui(data_dir='../data'):
+def open_mrcui(data_dir='../data/2023AA-full/2023AA/META/'):
     """
     Opens the CUI info file from the UMLS Metahesaurus
 
@@ -66,7 +64,7 @@ def open_mrcui(data_dir='../data'):
     return read_rrf_file('MRCUI.RRF.gz', data_dir)
 
 
-def open_mrsty(data_dir='../data'):
+def open_mrsty(data_dir='../data/2023AA-full/2023AA/META/'):
     """
     Opens the semmantic type info file from the UMLS Metahesaurus
 

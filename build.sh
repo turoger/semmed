@@ -100,26 +100,28 @@ if [[ -z $APIKEY || -z $HOST || -z $PASS || -z $USER || -z $PORT ]]; then
     exit 1
 fi
 
-# Get UMLS
-cd ./0_prepare/scripts
-bash download_umls.sh $APIKEY
+#
+# Download Requirements
+#
+cd ./0_prepare/
+bash download_requirements.sh --host $HOST --port $PORT --user $USER --pass $PASS --apikey $APIKEY
+#
+# Process data
+#
+echo "Extracting dates for indications"
+bash initial_processing.sh
 
-# Get Semmed
-bash download_semmeddb.sh $APIKEY
 
-# Get Semmed doc types
-bash get_semtype_files.sh 
+cd ../1_build
 
-# Get Drug Central
-bash download_drugcentral.sh --host $HOST --port $PORT --user $USER --pass $PASS
+# build hetnet
+echo "Building SEMMED HetNet"
 
-# Get baseline
-bash download_baseline.sh
 
-cd ../../1_build
-
-# process hetnet
-echo "SEMMED Building HetNet"
+#
+# Prepare
+#
+echo "Preparing SEMMED HetNet"
 if [[ $KEEP_NEGATIVE_EDGES -eq 1 ]]; then
     echo "Replacing Negative Relations with Bidirectional Relations"
 python ./scripts/01_build_hetnet_and_reverse_neg_relation.py

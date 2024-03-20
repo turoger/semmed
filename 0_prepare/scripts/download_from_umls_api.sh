@@ -94,5 +94,6 @@ echo "Ticket Granting Ticket: $TGTVALUE"
 STTICKET=$(curl -d "service="$DOWNLOAD_URL -H "Content-Type: application/x-www-form-urlencoded" -X POST https://utslogin.nlm.nih.gov/cas/v1/tickets/$TGTVALUE)
 
 echo "Service Ticket: $STTICKET"
-curl -c cookie.txt -b cookie.txt -CJLO $DOWNLOAD_URL?ticket=$STTICKET
+# (-C) continue-at Resumed transfer offset, (-J) remote-header-name, (-O) remote-name, (-L) location follow redirects 
+curl -c cookie.txt -b cookie.txt -JLO $DOWNLOAD_URL?ticket=$STTICKET
 rm cookie.txt

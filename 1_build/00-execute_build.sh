@@ -20,9 +20,9 @@ Help()
     "   --dc_date, -d                           (str), downloaded drug central dataset version date"
     "   --help, -h                              optional, usage information"
     "   --semmed_version, -n                    (str), downloaded semmed/umls dataset version"
-    "   --split_hyperparameter_optimization, -p {True|False}, split the dataset for hyperparameter optimization"
-    "   --split_train_test_valid, -s            {True|False}, True, split the dataset for training, testing, and validation. Otherwise split the dataset to training and testing"
-    "   --include_time, -t                      {True|False}, include time in the dataset"
+    "   --split_hyperparameter_optimization, -p {0,1}, split the dataset for hyperparameter optimization. Make sure to provide 1 for True, 0 for False. Default is False"
+    "   --split_train_test_valid, -s            {0,1}, True, split the dataset for training, testing, and validation. Otherwise split the dataset to training and testing"
+    "   --include_time, -t                      {0,1}, include time in the dataset"
     "   --hpo_year, -y                          (int), year to split the dataset for hyperparameter optimization"
 
     ""
@@ -56,9 +56,9 @@ HPO_YEAR=
 if [ -z "${BASE_DIR}"]; then BASE_DIR="../data/time_networks-6_metanode";fi
 if [ -z "${DC_DATE}"]; then DC_DATE="20220822";fi
 if [ -z "${SEM_VER}"]; then SEM_VER="VER43_R";fi
-if [ -z "${HPO}"]; then HPO=1;fi
-if [ -z "${TTV}"]; then TTV=1;fi
-if [ -z "${TIME}"]; then TIME=1;fi
+if [ -z "${HPO}"]; then HPO=''; else HPO='--split_hyperparameter_optimization';fi
+if [ -z "${TTV}"]; then TTV=''; else TTV='--split_train_test_valid';fi
+if [ -z "${TIME}"]; then TIME=''; else TIME='--include_time';fi
 if [ -z "${HPO_YEAR}"]; then HPO_YEAR=1987;fi
 
 eval set --"$TEMP"
@@ -113,10 +113,10 @@ if [[ -z $BASE_DIR || -z $DC_DATE || -z $SEM_VER ]]; then
 fi
 
 
-python ./scripts/01_build_hetnet_polars.py --semmed_version $SEM_VER --convert_negative_relations True
+python ./scripts/01_build_hetnet_polars.py --semmed_version $SEM_VER --convert_negative_relations
 python ./scripts/02_Merge_Nodes_via_ID_xrefs_polars.py --dc_date $DC_DATE --semmed_version $SEM_VER
 python ./scripts/03_Condense_edge_semmantics_polars.py --semmed_version $SEM_VER
 python ./scripts/04_filter_low_abundance_edges_polars.py --semmed_version $SEM_VER
 python ./scripts/05_Keep_Six_relevant_metanodes_polars.py --semmed_version $SEM_VER
 python ./scripts/06_Resolve_Network_Edges_by_Time_polars.py --semmed_version $SEM_VER --base_dir $BASE_DIR
-python ./scripts/07_Build_data_split.py --semmed_version $SEM_VER --base_dir $BASE_DIR --split_hyperparameter_optimization $HPO --split_train_test_valid $TTV --include_time $TIME --hpo_year $HPO_YEAR
+python ./scripts/07_Build_data_split.py --semmed_version $SEM_VER --base_dir $BASE_DIR --hpo_year $HPO_YEAR $HPO $TTV $TIME

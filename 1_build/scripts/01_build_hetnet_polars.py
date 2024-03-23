@@ -34,21 +34,21 @@ def parse_args(args=None):
         "-n",
         "--drop_negative_relations",
         default=False,
-        type=bool,
+        action="store_true",
         help='Remove negative relations from output. If "convert_negative_relations" is True, negative relations will be converted to bidirectional',
     )
     parser.add_argument(
         "-c",
         "--convert_negative_relations",
         default=False,
-        type=bool,
+        action="store_true",
         help='Converts negative relations to bidirectional relations. i.e. "NEG_ISA" -> "ISA"',
     )
     parser.add_argument(
         "-d",
         "--include_direction",
         default=False,
-        type=bool,
+        action="store_true",
         help='Includes or removes direction component of metapath. i.e "CDpo>G" -> "CDpoG", "Cct>C" -> "CctC". Directionality cannot be applied if "convert_negative_relations" is False or "drop_negative_relations" is False',
     )
     return parser.parse_args(args)
@@ -56,7 +56,11 @@ def parse_args(args=None):
 
 def main(args):
     print(f"Running 01_build_hetnet_polars.py")
-    print(f"... Reading in SemMed Dataframe...")
+    print(f"--semmed_version: {args.semmed_version}")
+    print(f"--drop_negative_relations: {args.drop_negative_relations}")
+    print(f"--convert_negative_relations: {args.convert_negative_relations}")
+    print(f"--include_direction: {args.include_direction}\n")
+    print(f"... Reading in SemMed Dataframe.")
     # read dataframe
     sem_df = (
         pl.read_parquet(

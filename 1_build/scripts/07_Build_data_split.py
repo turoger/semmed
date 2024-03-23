@@ -3,6 +3,7 @@ import pickle
 import warnings
 
 import polars as pl
+from tqdm import tqdm
 
 warnings.filterwarnings("ignore")
 import argparse
@@ -32,23 +33,23 @@ def parse_args(args=None):
     parser.add_argument(
         "-p",
         "--split_hyperparameter_optimization",
-        default="True",
-        type=bool,
+        default=False,
+        action="store_true",
         help="create a hyperparameter optimization split, where the train triples are equal to or less than the given year, and test/valid triples are greater than the given year",
     )
 
     parser.add_argument(
         "-s",
         "--split_train_test_valid",
-        default=True,
-        type=bool,
+        default=False,
+        action="store_true",
         help="split data into train/test/valid sets, where train/test triples are equal to or less than the given year, and valid triples are greater than the given year. If 'False', only split into train and test, where train triples are equal to or less than the given year, and test triples are greater than the given year.",
     )
     parser.add_argument(
         "-t",
         "--include_time",
         default=False,
-        type=bool,
+        action="store_true",
         help="include time in the dataset",
     )
     parser.add_argument(
@@ -64,6 +65,11 @@ def parse_args(args=None):
 
 def main(args):
     print("Running 07_Build_data_split.py")
+    print(f"--split_train_test_valid: {args.split_train_test_valid}")
+    print(
+        f"--split_hyperparameter_optimization: {args.split_hyperparameter_optimization}"
+    )
+    print(f"--include_time: {args.include_time}")
     print(f"changing directory to {args.base_dir}")
     os.chdir(args.base_dir)
 
@@ -72,66 +78,69 @@ def main(args):
     )
 
     # Train/Test/Validation Split, where Train and Test are Present and Past, and Validation is Future
-    for file in os.listdir():
-        if file.startswith("19") == True or file.startswith("20") == True:
+    for file in (
+        pbar := tqdm(
+            [f for f in os.listdir() if (f.startswith("19") or f.startswith("20"))]
+        )
+    ):
 
-            if args.include_time:
-                time_txt = "time"
-            else:
-                time_txt = "notime"
+        pbar.set_description(f"... creating train/test/valid split - {file}")
 
-            if args.split_train_test_valid:
-                print(f"... creating train/test/valid split for {file}")
-                train, test, valid = make_train_test_valid_set(
-                    file, time=args.include_time
-                )
-                train.write_csv(
-                    file=os.path.join(file, f"train_ttv_{time_txt}.txt"),
-                    separator="\t",
-                    include_header=False,
-                )
-                test.write_csv(
-                    file=os.path.join(file, f"test_ttv_{time_txt}.txt"),
-                    separator="\t",
-                    include_header=False,
-                )
-                valid.write_csv(
-                    file=os.path.join(file, f"valid_ttv_{time_txt}.txt"),
-                    separator="\t",
-                    include_header=False,
-                )
-            else:  # create train/test if train/test/valid is false
-                print(f"... creating train/test split for {file}")
-                train, test = make_train_test_set(file, time=args.include_time)
-                train.write_csv(
-                    file=os.path.join(file, f"train_{time_txt}.txt"),
-                    separator="\t",
-                    include_header=False,
-                )
-                test.write_csv(
-                    file=os.path.join(file, f"test_{time_txt}.txt"),
-                    separator="\t",
-                    include_header=False,
-                )
+        if args.include_time:
+            time_txt = "time"
+        else:
+            time_txt = "notime"
 
-            if args.split_hyperparameter_optimization and file == args.hpo_year:
-                print(f"... creating hyperparameter optimization split for {file}")
-                train, test, valid = make_hpo_split(file)
-                train.write_csv(
-                    file=os.path.join(file, "hpo_train.txt"),
-                    separator="\t",
-                    include_header=False,
-                )
-                test.write_csv(
-                    file=os.path.join(file, "hpo_test.txt"),
-                    separator="\t",
-                    include_header=False,
-                )
-                valid.write_csv(
-                    file=os.path.join(file, "hpo_valid.txt"),
-                    separator="\t",
-                    include_header=False,
-                )
+        if args.split_train_test_valid:
+
+            train, test, valid = make_train_test_valid_set(file, time=args.include_time)
+            train.write_csv(
+                file=os.path.join(file, f"train_ttv_{time_txt}.txt"),
+                separator="\t",
+                include_header=False,
+            )
+            test.write_csv(
+                file=os.path.join(file, f"test_ttv_{time_txt}.txt"),
+                separator="\t",
+                include_header=False,
+            )
+            valid.write_csv(
+                file=os.path.join(file, f"valid_ttv_{time_txt}.txt"),
+                separator="\t",
+                include_header=False,
+            )
+        else:  # create train/test if train/test/valid is false
+
+            train, test = make_train_test_set(file, time=args.include_time)
+            train.write_csv(
+                file=os.path.join(file, f"train_{time_txt}.txt"),
+                separator="\t",
+                include_header=False,
+            )
+            test.write_csv(
+                file=os.path.join(file, f"test_{time_txt}.txt"),
+                separator="\t",
+                include_header=False,
+            )
+
+        if args.split_hyperparameter_optimization and file == args.hpo_year:
+
+            train, test, valid = make_hpo_split(file, time=args.include_time)
+            train.write_csv(
+                file=os.path.join(file, f"hpo_train_{time_txt}.txt"),
+                separator="\t",
+                include_header=False,
+            )
+            test.write_csv(
+                file=os.path.join(file, f"hpo_test_{time_txt}.txt"),
+                separator="\t",
+                include_header=False,
+            )
+            valid.write_csv(
+                file=os.path.join(file, f"hpo_valid_{time_txt}.txt"),
+                separator="\t",
+                include_header=False,
+            )
 
     print("Done running 07_Build_data_split.py\n")
 

@@ -44,6 +44,8 @@ def parse_args(args=None):
 def main(args):
     # load data
     print("Running 02_Merge_Nodes_via_ID_xrefs.py")
+    print(f"-- dc_date (DrugCentral Date): {args.dc_date}")
+    print(f"-- semmed_version (SemMed Version): {args.semmed_version}\n")
     print("Importing DrugCentral information for Gold Standard and Add Compound Names")
     print("... Loading drugcentral_rel dataframe")
     rels = pl.read_csv(f"../data/drugcentral_rel_{args.dc_date}.csv")

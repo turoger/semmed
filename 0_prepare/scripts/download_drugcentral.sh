@@ -93,7 +93,7 @@ wget -c -N https://unmtid-shinyapps.net/download/drugcentral.dump.08222022.sql.g
 
 
 #
-# The remainer of this file requires postgreSQL to be installed and running on the machine
+# The remainder of this file requires postgreSQL to be installed and running on the machine
 # Make sure your USER has appropriate permissions. Login to your postgres and elevate user 
 # with `alter user $USER createdb;`
 #

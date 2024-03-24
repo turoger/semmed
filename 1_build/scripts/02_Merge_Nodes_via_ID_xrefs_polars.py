@@ -2,8 +2,10 @@
 # Meant as a script to download everything without going through the notebook
 
 import argparse
+import os
 import pickle
 import sys
+import urllib
 from collections import Counter, defaultdict
 
 import networkx as nx
@@ -376,12 +378,16 @@ def main(args):
     result = wdi_core.WDItemEngine.execute_sparql_query(query_text, as_dataframe=True)
     result.to_csv("../data/doid-to-umls.csv", index=False)
     doid_to_umls = result.set_index("doid")["umlscui"].to_dict()
-    slim_xref = pl.read_csv(
-        "../../disease-ontology/data/xrefs-prop-slim.tsv", separator="\t"
-    )
-    do_slim = pl.read_csv(
-        "../../disease-ontology/data/slim-terms-prop.tsv", separator="\t"
-    )
+
+    # download the relevant disease-ontology files and read them as csv
+    for filename in ["xrefs-prop-slim.tsv", "slim-terms-prop.tsv"]:
+        if not os.path.exists(file := os.path.join("../data", filename)):
+            urllib.request.urlretrieve(
+                f"https://raw.githubusercontent.com/mmayers12/disease-ontology/gh-pages/data/{filename}",
+                filename=file,
+            )
+    slim_xref = pl.read_csv("../data/xrefs-prop-slim.tsv", separator="\t")
+    do_slim = pl.read_csv("../data/slim-terms-prop.tsv", separator="\t")
 
     resources = [
         "SNOMEDCT_US_2022_09_01",

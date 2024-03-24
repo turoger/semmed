@@ -111,7 +111,7 @@ while true; do
             $DC_DATE="$2";
             echo "DC_DATE:  $DC_DATE";
             shift 2 ;;
-        -D| --umls_date);
+        -D| --umls_date)
             UMLS_DATE="$2";
             echo "UMLS_DATE: $UMLS_DATE";
             shift 2;;
@@ -119,11 +119,11 @@ while true; do
             DROP_NEGATIVE_EDGES=1;
             echo "DROP_NEGATIVE_EDGES: $DROP_NEGATIVE_EDGES";
             shift 2;;
-        -c| --convert_neg);
+        -c| --convert_neg)
             CONVERT_NEG=1;
             echo "CONVERT_NEG: $CONVERT_NEG";
             shift 2;;
-        -i| --include_direction);
+        -i| --include_direction)
             INCLUDE_DIRECTION=1;
             echo "INCLUDE_DIRECTION: $INCLUDE_DIRECTION";
             shift 2;;
@@ -131,15 +131,15 @@ while true; do
             HPO=1;
             echo "HPO:      $HPO";
             shift 2;;
-        -t| --split_ttv);
+        -t| --split_ttv)
             TTV=1;
             echo "TTV:      $TTV";
             shift 2;;
-        -x| --include_time);
+        -x| --include_time)
             TIME=1;
             echo "TIME:     $TIME";
             shift 2;;
-        -y| --hpo_year);
+        -y| --hpo_year)
             HPO_YEAR="$2";
             echo "HPO_YEAR: $HPO_YEAR";
             shift 2;;
@@ -182,7 +182,7 @@ if ! [ -d ./semmed]; then
 else
     cd semmed
 fi
-
+exit()
 #
 # Setup virtual environment. If it already exists, skip
 #

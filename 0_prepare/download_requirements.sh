@@ -20,14 +20,15 @@ Help()
 	"bash $SCRIPT --host yourServerName --port 5432 --user yourUserName"
 	""
 	"Options:"
-	"	--host, -H			postgreSQL host name"
-    "   --pass, -P			postgreSQL password"
-	"	--port, -p			postgreSQL port number"
-	"	--user, -u			postgreSQL user login"
-	"	--apikey, -a		UMLS apikey"
+	"   --host, -H          postgreSQL host name"
+    "   --pass, -P          postgreSQL password"
+	"   --port, -p          postgreSQL port number"
+	"   --user, -u          postgreSQL user login"
+	"   --apikey, -a        UMLS apikey"
+    "   --dc_date, -d       Drug Central dump date"
     "   --umls_date, -D     UMLS version date"
     "   --sem_ver, -v       SemMedDB version"
-	"	--help, -h			optional, usage information"
+	"   --help, -h          optional, usage information"
     ""
     "NOTE:"
     "This code base is in development and has no guarantees. Use at your own risk."
@@ -39,8 +40,8 @@ Help()
 # assign vars with short or long form flags
 #
 TEMP=$(getopt \
-    --options a:D:H:P:u:p:v:h:: \
-    --long apikey:,umls_date:,host:,pass:,user:,port:,sem_ver:,help::\
+    --options a:d:D:H:P:u:p:v:h:: \
+    --long apikey:,dc_date:,umls_date:,host:,pass:,user:,port:,sem_ver:,help::\
     --name 'download_requirements' -- "$@"
     )
     
@@ -53,6 +54,7 @@ HOST=
 USER=
 UMLS_DATE=
 SEM_VER=
+DC_DATE=
 
 eval set --"$TEMP"
 while true; do
@@ -62,6 +64,10 @@ while true; do
         -a| --apikey) 
             APIKEY="$2"; 
             # echo "APIKEY:    $APIKEY";
+            shift 2 ;;
+        -d| --dc_date)
+            DC_DATE="$2";
+            # echo "DC_DATE:   $DC_DATE";
             shift 2 ;;
         -D| --umls_date)
             UMLS_DATE="$2";
@@ -104,6 +110,7 @@ if [[ -z $APIKEY || -z $HOST || -z $PASS || -z $USER || -z $PORT ]]; then
     if [[ -z $PORT ]]; then echo "    PORT (-p)"; fi
     if [[ -z $USER ]]; then echo "    USER (-u)"; fi
     if [[ -z $UMLS_DATE ]]; then echo "    UMLS_DATE (-D)"; fi
+    if [[ -z $DC_DATE ]]; then echo "    DC_DATE (-d)"; fi
     if [[ -z $SEM_VER ]]; then echo "    SEM_VER (-v)"; fi
     echo "See Help (-h) for more information"
     exit 1
@@ -120,7 +127,7 @@ bash download_semmeddb.sh $APIKEY $SEM_VER $UMLS_DATE
 bash get_semtype_files.sh 
 
 # Get Drug Central
-bash download_drugcentral.sh --host $HOST --port $PORT --user $USER --pass $PASS
+bash download_drugcentral.sh --host $HOST --port $PORT --user $USER --pass $PASS --dc_date $DC_DATE
 
 # Get baseline
 bash download_baseline.sh

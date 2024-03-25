@@ -204,7 +204,7 @@ fi
 #
 echo "Downloading required files"
 cd ./0_prepare/
-bash download_requirements.sh --host $HOST --port $PORT --user $USER --pass $PASS --apikey $APIKEY --umls_date $UMLS_DATE --sem_ver $SEM_VER
+bash download_requirements.sh --host $HOST --port $PORT --user $USER --pass $PASS --apikey $APIKEY --umls_date $UMLS_DATE --sem_ver $SEM_VER --dc_date $DC_DATE
 # Pre-processing
 echo "Preparing SEMMED Heterogenous Network"
  conda run -n mini_semmed python preprocessing.py --semmed_version $SEM_VER --umls_date $UMLS_DATE
@@ -269,11 +269,11 @@ fi
 #
 # run rest of the pipeline. Please check flags to make sure version drugcentral and semmed downloaded matches
 # 
-#bash 00-execute_build.sh --dc_date '20220822' --semmed_version 'VER43_R' --base_dir '../date/time_networks-6_metanode'
-conda run -n mini_semmed python ./scripts/01_build_hetnet_polars.py --semmed_version $SEM_VER $DROP_NEGATIVE_EDGES $CONVERT_NEG $INCLUDE_DIRECTION
-conda run -n mini_semmed python ./scripts/02_Merge_Nodes_via_ID_xrefs_polars.py --dc_date $DC_DATE --semmed_version $SEM_VER
-conda run -n mini_semmed python ./scripts/03_Condense_edge_semmantics_polars.py --semmed_version $SEM_VER
-conda run -n mini_semmed python ./scripts/04_filter_low_abundance_edges_polars.py --semmed_version $SEM_VER
-conda run -n mini_semmed python ./scripts/05_Keep_Six_relevant_metanodes_polars.py --semmed_version $SEM_VER
-conda run -n mini_semmed python ./scripts/06_Resolve_Network_Edges_by_Time_polars.py --semmed_version $SEM_VER --base_dir $BASE_DIR
-conda run -n mini_semmed python ./scripts/07_Build_data_split.py --semmed_version $SEM_VER --base_dir $BASE_DIR --hpo_year $HPO_YEAR $HPO $TTV $TIME
+conda run -n mini_semmed python building.py --semmed_version $SEM_VER $DROP_NEGATIVE_EDGES $CONVERT_NEG $INCLUDE_DIRECTION $TIME $HPO $TTV --base_dir $BASE_DIR --dc_date $DC_DATE --hpo_year $HPO_YEAR
+# conda run -n mini_semmed python ./scripts/01_build_hetnet_polars.py --semmed_version $SEM_VER $DROP_NEGATIVE_EDGES $CONVERT_NEG $INCLUDE_DIRECTION
+# conda run -n mini_semmed python ./scripts/02_Merge_Nodes_via_ID_xrefs_polars.py --dc_date $DC_DATE --semmed_version $SEM_VER
+# conda run -n mini_semmed python ./scripts/03_Condense_edge_semmantics_polars.py --semmed_version $SEM_VER
+# conda run -n mini_semmed python ./scripts/04_filter_low_abundance_edges_polars.py --semmed_version $SEM_VER
+# conda run -n mini_semmed python ./scripts/05_Keep_Six_relevant_metanodes_polars.py --semmed_version $SEM_VER
+# conda run -n mini_semmed python ./scripts/06_Resolve_Network_Edges_by_Time_polars.py --semmed_version $SEM_VER --base_dir $BASE_DIR
+# conda run -n mini_semmed python ./scripts/07_Build_data_split.py --semmed_version $SEM_VER --base_dir $BASE_DIR --hpo_year $HPO_YEAR $HPO $TTV $TIME

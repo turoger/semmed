@@ -21,11 +21,12 @@ Help(){
 	"bash $SCRIPT --host yourServer --port 5432 --user yourUserName"
 	""
 	"Options:"
-	"	--host, -H	host name"
+	"   --host, -H	host name"
+    "--dc_date, -d	drug central dump date"
     "   --pass, -P  password"
-	"	--port, -p	port number"
-	"	--user, -u	user login"
-    "	--help, -h	optional, usage information"
+	"   --port, -p	port number"
+	"   --user, -u	user login"
+    "   --help, -h	optional, usage information"
 	)
 	printf "%s\n" "${txt[@]}"
 }
@@ -49,8 +50,8 @@ fi
 # Process flagging
 #
 TEMP=$(getopt \
-    --options H:P:p:u:h:: \
-    --long host:,pass:,port:,user:,help:: \
+    --options d:H:P:p:u:h:: \
+    --long dc_date:host:,pass:,port:,user:,help:: \
     --name 'download_drugcentral' -- "$@"
     )
     
@@ -58,11 +59,16 @@ PASS=
 PORT=
 HOST=
 USER=
+DUMPDATE=
 eval set --"$TEMP"
 while true; do
     case "$1" in
         -h | --help)
             Help; exit;;
+        -d | --dc_date)
+            DUMPDATE="$2";
+            # echo "DUMPDATE:  $DUMPDATE";
+            shift 2 ;;
         -P | --pass)
             PASS="$2";
             # echo "PASS:  $PASS";

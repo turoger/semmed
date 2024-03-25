@@ -51,7 +51,7 @@ fi
 #
 TEMP=$(getopt \
     --options d:H:P:p:u:h:: \
-    --long dc_date:host:,pass:,port:,user:,help:: \
+    --long dc_date:,host:,pass:,port:,user:,help:: \
     --name 'download_drugcentral' -- "$@"
     )
     

@@ -26,24 +26,21 @@ fi
 echo "copying semmed to $OUT_FILE"
 cp semmed${semmed_ver%%_*}_${umls_date//[!0-9]/}_R_PREDICATION.csv.gz* $OUT_FILE
 
-#
-# Column names already provided in directory
-#
-echo "Copying file names"
-cp ../../data/col_names.txt $NEW_FILE
-
 
 #
 # Unzip files and combine them
 #
-echo Adding headers to ${NEW_FILE} and decompressing it
+echo Adding headers to ${NEW_FILE}
 
 if ! [ -f $(find ../../data -name "semmed*.csv") ]
 then
-gzip -cd $OUT_FILE | pv > $NEW_FILE
+    echo "... Copying file headers to $NEW_FILE"
+    cp ../../data/col_names.txt $NEW_FILE
+    echo "... Unzipping and adding to header"
+    gzip -cd $OUT_FILE | pv >> $NEW_FILE
 #pv | zcat -cd $OUT_FILE | cat >> $NEW_FILE
 else
-echo "File already exists"
+    echo "... File already exists"
 fi
 
 echo "Completed downloading SemMedDB"

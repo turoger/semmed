@@ -18,7 +18,7 @@ def parse_args(args=None):
         help="version number, a string, for SemMed dump",
     )
     parser.add_argument(
-        "-d",
+        "-D",
         "--umls_date",
         default="2023AA",
         type=str,

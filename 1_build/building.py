@@ -68,7 +68,7 @@ def parse_args(args=None):
         help="split data into train/test/valid sets, where train/test triples are equal to or less than the given year, and valid triples are greater than the given year. If 'False', only split into train and test, where train triples are equal to or less than the given year, and test triples are greater than the given year.",
     )
     parser.add_argument(
-        "-i",
+        "-x",
         "--include_time",
         default=False,
         action="store_true",

@@ -207,12 +207,12 @@ cd ./0_prepare/
 bash download_requirements.sh --host $HOST --port $PORT --user $USER --pass $PASS --apikey $APIKEY --umls_date $UMLS_DATE --sem_ver $SEM_VER
 # Pre-processing
 echo "Preparing SEMMED Heterogenous Network"
-# bash initial_processing.sh
-conda run -n mini_semmed python ./scripts/01_initial_data_clean.py --semmed_version $SEM_VER
-conda run -n mini_semmed python ./scripts/02_id_to_publication_year.py --semmed_version $SEM_VER
-conda run -n mini_semmed python ./scripts/03_umls_cui_to_mesh_descriptorID.py --semmed_version $SEM_VER  --umls_date $UMLS_DATE
-conda run -n mini_semmed python ./scripts/04_parse_mesh_data.py --umls_date $UMLS_DATE
-conda run -n mini_semmed python ./scripts/05_mesh_id_to_name_via_umls.py --umls_date $UMLS_DATE
+ conda run -n mini_semmed python preprocessing.py --semmed_version $SEM_VER --umls_date $UMLS_DATE
+# conda run -n mini_semmed python ./scripts/01_initial_data_clean.py --semmed_version $SEM_VER
+# conda run -n mini_semmed python ./scripts/02_id_to_publication_year.py --semmed_version $SEM_VER
+# conda run -n mini_semmed python ./scripts/03_umls_cui_to_mesh_descriptorID.py --semmed_version $SEM_VER  --umls_date $UMLS_DATE
+# conda run -n mini_semmed python ./scripts/04_parse_mesh_data.py --umls_date $UMLS_DATE
+# conda run -n mini_semmed python ./scripts/05_mesh_id_to_name_via_umls.py --umls_date $UMLS_DATE
 
 
 #

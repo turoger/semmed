@@ -9,7 +9,7 @@ echo "Downloading baseline files"
 wget -r -nv -N -c ftp://ftp.ncbi.nlm.nih.gov/pubmed/baseline/
 
 # Fix the directory sturcture
-if ! [[ $(ll *.xml.gz | wc -l) -gt 1218 ]];then
+if ! [ $(ls -al *.xml.gz | wc -l) -gt 1218 ];then
     echo "Fixing directory structure"
     pushd ftp.ncbi.nlm.nih.gov/pubmed/baseline/
     cp * ../../../

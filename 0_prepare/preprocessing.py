@@ -11,7 +11,7 @@ def parse_args(args=None):
     )
 
     parser.add_argument(
-        "-n",
+        "-v",
         "--semmed_version",
         default="VER43_R",
         type=str,

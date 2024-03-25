@@ -30,7 +30,7 @@ def parse_args(args=None):
 
 
 def main(args):
-    print("Running 01_initia_data_clean.py (approx. 10 minutes)")
+    print("Running 01_initial_data_clean.py (approx. 10 minutes)")
     print("Importing raw SemMedDB")
 
     # lazy frame extraction from polars
@@ -473,7 +473,7 @@ def main(args):
     sem_df.write_parquet(
         f"../data/semmed{args.semmed_version}_clean_de-deprecate.parquet"
     )
-    print("Complete. 01_initial_data_clean.py has finished running.")
+    print("Complete. 01_initial_data_clean.py has finished running.\n")
 
 
 if __name__ == "__main__":

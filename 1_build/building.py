@@ -11,7 +11,7 @@ def parse_args(args=None):
     )
 
     parser.add_argument(
-        "-n",
+        "-v",
         "--semmed_version",
         default="VER43_R",
         type=str,
@@ -32,7 +32,7 @@ def parse_args(args=None):
         help='Converts negative relations to bidirectional relations. i.e. "NEG_ISA" -> "ISA"',
     )
     parser.add_argument(
-        "-d",
+        "-i",
         "--include_direction",
         default=False,
         action="store_true",
@@ -53,7 +53,7 @@ def parse_args(args=None):
         help="directory to build the time-based dataset",
     )
     parser.add_argument(
-        "-p",
+        "-o",
         "--split_hyperparameter_optimization",
         default=False,
         action="store_true",
@@ -61,7 +61,7 @@ def parse_args(args=None):
     )
 
     parser.add_argument(
-        "-s",
+        "-t",
         "--split_train_test_valid",
         default=False,
         action="store_true",

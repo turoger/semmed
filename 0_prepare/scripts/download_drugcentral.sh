@@ -39,7 +39,7 @@ then
 	echo "ERROR: Please check for missing inputs"
 	echo ""
 	Help
-elif [ $# -gt 8 ];
+elif [ $# -gt 10 ];
 then
 	echo "ERROR: Too many inputs: $# given"
 	echo ""

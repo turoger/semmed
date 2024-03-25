@@ -154,7 +154,7 @@ def main(args):
         f"... There are {nodes.shape[0]:,} nodes and {nodes['id'].unique().shape[0]:,} unique IDs"
     )
     print(
-        f"... {nodes.group_by('id').count().filter(pl.col('count')>1).shape[0]:,} IDs have been found to have multiple semantic types"
+        f"... {nodes.group_by('id').len().filter(pl.col('len')>1).shape[0]:,} IDs have been found to have multiple semantic types"
     )
 
     # fix semantic types using the UMLS Metathesaurus

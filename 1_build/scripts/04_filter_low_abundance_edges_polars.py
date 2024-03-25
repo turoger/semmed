@@ -49,7 +49,7 @@ def main(args):
         f"... Applying a {cutoff:%} cutoff to edges. Only edges greater than {cutoff*len(edges):,} will be retained."
     )
     print(
-        f"... Number of edge types with this cutoff: {len((filt_counts:=counts.filter(pl.col('counts')>(cutoff*len(edges))))):,}"
+        f"... Number of edge types with this cutoff: {len((filt_counts:=counts.filter(pl.col('count')>(cutoff*len(edges))))):,}"
     )
     print(
         f"... Number of edges that remain with this cutoff: {len(filt_edges:=edges.filter(pl.col('r').is_in(filt_counts['r']))):,}"
@@ -205,12 +205,12 @@ def main(args):
     print(
         f"... Number of edges after filtering out nodes that are too general: {filt_edges.shape[0]:,}"
     )
-    counts = filt_edges["n_pmids"].value_counts().sort("counts", descending=True)
+    counts = filt_edges["n_pmids"].value_counts().sort("count", descending=True)
     x = counts.to_pandas()
     for i in range(1, 11):
         print(
             "... Edges with at least {} unique PMIDs: {:,}".format(
-                i, (x.query("n_pmids >= @i")["counts"].sum())
+                i, (x.query("n_pmids >= @i")["count"].sum())
             )
         )
 

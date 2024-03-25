@@ -1,9 +1,9 @@
 import argparse
+import re
 from collections.abc import *
 from typing import Union
 
 import polars as pl
-import regex
 from tqdm import tqdm
 
 
@@ -410,10 +410,10 @@ def create_acronym_dict(edges: pl.DataFrame) -> dict:
 
     # iterate through relations to extract relations to abbreviation dictionary
     for i, relation in enumerate(list(edges["r"].unique())):
-        split_rel = regex.findall("[A-Za-z><]+", relation)
+        split_rel = re.findall("[A-Za-z><]+", relation)
         mtypes = split_rel[-1]
-        node_mtypes = regex.findall("[A-Z]+", mtypes)
-        rel_abbv = regex.findall("[a-z><]+", mtypes)[0]
+        node_mtypes = re.findall("[A-Z]+", mtypes)
+        rel_abbv = re.findall("[a-z><]+", mtypes)[0]
         h_abbv = node_mtypes[0]
         t_abbv = node_mtypes[-1]
 

@@ -17,7 +17,7 @@ def parse_args(args=None):
 
     parser.add_argument(
         "-d",
-        "--semmed_date",
+        "--umls_date",
         default="2023AA",
         type=str,
         help="downloaded semmed version year followed by two capitalized, alphabetical characters",

@@ -110,13 +110,13 @@ def main(args):
     print(f"Number of unique Node Types: {nodes['label'].n_unique()}")
     print(
         f"Node Type                      Count:\n---------------------------------------\
-    \n{nodes['label'].value_counts().sort('counts', descending=True)}"
+    \n{nodes['label'].value_counts().sort('count', descending=True)}"
     )
 
     print(f"Number of unique Edges Types: {edges['sem'].n_unique()}")
     print(
         f"Edge Type                 Count:\n-----------------------------------\
-    \n{edges['sem'].value_counts().sort('counts', descending=True)}"
+    \n{edges['sem'].value_counts().sort('count', descending=True)}"
     )
 
     print(

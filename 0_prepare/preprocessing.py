@@ -62,8 +62,6 @@ def main(args):
         [
             "python",
             "./scripts/05_mesh_id_to_name_via_umls.py",
-            "--umls_date",
-            args.umls_date,
         ]
     )
 

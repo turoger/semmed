@@ -648,7 +648,7 @@ def main(args):
         .vstack(edges["t_id"].value_counts().rename({"t_id": "k"}))
     )
 
-    cui_counts = dict(zip(cui_counts["k"].to_list(), cui_counts["counts"].to_list()))
+    cui_counts = dict(zip(cui_counts["k"].to_list(), cui_counts["count"].to_list()))
     # convert conflicting `new_id` to their old `id` and get the semmantic type
     grpd = (
         new_nodes.filter(pl.col("new_id").is_in(problem_ids))

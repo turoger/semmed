@@ -40,7 +40,7 @@ echo Adding headers to ${NEW_FILE} and decompressing it
 
 if ! [ -f $(find ../../data -name "semmed*.csv") ]
 then
-gzip -cd $OUT_FILE | (pv > $NEW_FILE)
+gzip -cd $OUT_FILE | pv > $NEW_FILE
 #pv | zcat -cd $OUT_FILE | cat >> $NEW_FILE
 else
 echo "File already exists"

@@ -166,31 +166,33 @@ fi
 #
 # check for empty variables, supply some defaults
 #
-if [ -z "${BASE_DIR}"]; then BASE_DIR="../data/time_networks-6_metanode";fi
-if [ -z "${DC_DATE}"]; then DC_DATE="20220822";fi
-if [ -z "${UMLS_DATE}"]; then UMLS_DATE="2023AA";fi
-if [ -z "${SEM_VER}"]; then SEM_VER="VER43_R";fi
-if [ -z "${HPO_YEAR}"]; then HPO_YEAR=1987;fi
+if [ -z "${BASE_DIR}" ]; then BASE_DIR="../data/time_networks-6_metanode";fi
+if [ -z "${DC_DATE}" ]; then DC_DATE="20220822";fi
+if [ -z "${UMLS_DATE}" ]; then UMLS_DATE="2023AA";fi
+if [ -z "${SEM_VER}" ]; then SEM_VER="VER43_R";fi
+if [ -z "${HPO_YEAR}" ]; then HPO_YEAR=1987;fi
 
 #
 # Setup file directory. If it exists skip, otherwise clone it
 #
-if ! [ -d ./semmed]; then
+if ! [ -d "./semmed" ]; then
     mkdir semmed
     cd semmed
     git clone https://github.com/turoger/semmed.git --depth 1 --branch=main ./
 else
     cd semmed
 fi
-exit()
+
+
 #
 # Setup virtual environment. If it already exists, skip
 #
+echo "Creating virtual environment"
 eval "$(conda shell.bash hook)" # instantiates conda hook
 VENV=$(conda env list | grep mini_semmed | awk '{print $1}')
 if ! [ -n "$VENV" ]; then
-    echo "Creating virtual environment"
     conda env create -f mini_env.yml -y
+    echo "Virtual environment created"
 else
     echo "Virtual environment already exists"
 fi
@@ -202,7 +204,7 @@ fi
 #
 echo "Downloading required files"
 cd ./0_prepare/
-bash download_requirements.sh --host $HOST --port $PORT --user $USER --pass $PASS --apikey $APIKEY
+bash download_requirements.sh --host $HOST --port $PORT --user $USER --pass $PASS --apikey $APIKEY --umls_date $UMLS_DATE --sem_ver $SEM_VER
 # Pre-processing
 echo "Preparing SEMMED Heterogenous Network"
 # bash initial_processing.sh

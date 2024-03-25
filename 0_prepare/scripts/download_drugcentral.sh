@@ -84,12 +84,18 @@ while true; do
     esac
 done
 
+DUMPDIR='../data/drugcentral_'
+if [[ -f "${DUMPDIR}rel_${DUMPDATE}.csv" && "${DUMPDIR}ids_${DUMPDATE}.csv" && "${DUMPDIR}approvals_${DUMPDATE}.csv" && "${DUMPDIR}syn_${DUMPDATE}.csv" && "${DUMPDIR}atc_${DUMPDATE}.csv" && "${DUMPDIR}atc-ddd_${DUMPDATE}.csv" ]]; then
+    echo "DrugCentral Files already exist and have been processed. Exiting $SCRIPT"
+    exit 0
+fi
+
 
 #
 # Download the Drug Central Dump
 #
 echo "Downloading Drug Central Dump"
-wget -c -N https://unmtid-shinyapps.net/download/drugcentral.dump.08222022.sql.gz -O ../../data/drugcentral.dump.$DUMPDATE.sql.gz
+wget -c -N https://unmtid-shinyapps.net/download/drugcentral.dump.$DUMPDATE.sql.gz -O ../../data/drugcentral.dump.$DUMPDATE.sql.gz
 
 
 #

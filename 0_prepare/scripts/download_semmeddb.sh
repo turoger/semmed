@@ -14,23 +14,30 @@ umls_date=$3
 
 NEW_FILE=../../data/semmed${semmed_ver}.csv
 OUT_FILE=../../data/semmed${semmed_ver%%_*}_${umls_date//[!0-9]/}_R_PREDICATION.csv.gz
-
-echo "downloading semmed files from UMLS to:"
+echo "Running download_semmeddb.sh"
+echo "... downloading semmed files from UMLS to:"
 echo $OUT_FILE
 
 if ! [ -f $( find . -name semmed${semmed_ver%%_*}_${umls_date//[!0-9]/}_R_PREDICATION.csv.gz* ) ]
 then
+    echo "... Local copy of semmed not found. Downloading semmed from UMLS."
     bash download_from_umls_api.sh --apikey $apikey --link https://data.lhncbc.nlm.nih.gov/umls-restricted/ii/tools/SemRep_SemMedDB_SKR/semmed${semmed_ver%%_*}_${umls_date//[!0-9]/}_R_PREDICATION.csv.gz
+else
+    echo "... Local copy of semmed found."
+fi
+echo "... check if $OUT_FILE exists"
+# Check if the file exists
+if ! [ -f $OUTFILE ]; then
+    echo "... Copying semmed to $OUT_FILE"
+    cp semmed${semmed_ver%%_*}_${umls_date//[!0-9]/}_R_PREDICATION.csv.gz* $OUT_FILE
 fi
 
-echo "copying semmed to $OUT_FILE"
-cp semmed${semmed_ver%%_*}_${umls_date//[!0-9]/}_R_PREDICATION.csv.gz* $OUT_FILE
 
 
 #
 # Unzip files and combine them
 #
-echo Adding headers to ${NEW_FILE}
+echo "... decompressing ${OUT_FILE} to ${NEW_FILE}"
 
 if ! [ -f $(find ../../data -name "semmed*.csv") ]
 then

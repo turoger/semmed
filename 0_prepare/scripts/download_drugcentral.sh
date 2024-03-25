@@ -65,26 +65,26 @@ while true; do
             Help; exit;;
         -P | --pass)
             PASS="$2";
-            echo "PASS:  $PASS";
+            # echo "PASS:  $PASS";
             shift 2 ;;
         -p | --port)
             PORT="$2";
-            echo "PORT:  $PORT";
+            # echo "PORT:  $PORT";
             shift 2 ;;
         -u | --user)
             USER="$2"
-            echo "USER:  $USER";
+            # echo "USER:  $USER";
             shift 2 ;;
         -H | --host)
             HOST="$2"
-            echo "HOST:  $HOST"
+            # echo "HOST:  $HOST"
             shift 2;;
         -- ) shift; break ;;
         * ) echo "ERROR:  Invalid Option"; echo "" ; Help; exit 1 ;;
     esac
 done
 
-DUMPDIR='../data/drugcentral_'
+DUMPDIR='../../data/drugcentral_'
 if [[ -f "${DUMPDIR}rel_${DUMPDATE}.csv" && "${DUMPDIR}ids_${DUMPDATE}.csv" && "${DUMPDIR}approvals_${DUMPDATE}.csv" && "${DUMPDIR}syn_${DUMPDATE}.csv" && "${DUMPDIR}atc_${DUMPDATE}.csv" && "${DUMPDIR}atc-ddd_${DUMPDATE}.csv" ]]; then
     echo "DrugCentral Files already exist and have been processed. Exiting $SCRIPT"
     exit 0
@@ -95,7 +95,7 @@ fi
 # Download the Drug Central Dump
 #
 echo "Downloading Drug Central Dump"
-wget -c -N https://unmtid-shinyapps.net/download/drugcentral.dump.$DUMPDATE.sql.gz -O ../../data/drugcentral.dump.$DUMPDATE.sql.gz
+wget -c -N "https://unmtid-shinyapps.net/download/drugcentral.dump.${DUMPDATE}.sql.gz" -O "../../data/drugcentral.dump.${DUMPDATE}.sql.gz"
 
 
 #

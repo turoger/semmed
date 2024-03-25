@@ -26,7 +26,7 @@ Help()
 	"	--user, -u			postgreSQL user login"
 	"	--apikey, -a		UMLS apikey"
     "   --umls_date, -D     UMLS version date"
-    "   --sem_ver, -S       SemMedDB version"
+    "   --sem_ver, -v       SemMedDB version"
 	"	--help, -h			optional, usage information"
     ""
     "NOTE:"
@@ -39,8 +39,8 @@ Help()
 # assign vars with short or long form flags
 #
 TEMP=$(getopt \
-    --options a:D:H:P:u:p:S:h:: \
-    --long apikey:,umls_date:,host:,pass:,user:,port:,sem_ver,help::\
+    --options a:D:H:P:u:p:v:h:: \
+    --long apikey:,umls_date:,host:,pass:,user:,port:,sem_ver:,help::\
     --name 'download_requirements' -- "$@"
     )
     
@@ -79,7 +79,7 @@ while true; do
             PORT="$2";
             # echo "PORT:      $PORT";
             shift 2 ;;
-        -S| --sem_ver)
+        -v| --sem_ver)
             SEM_VER="$2";
             # echo "SEM_VER:   $SEM_VER";
             shift 2 ;;
@@ -104,7 +104,7 @@ if [[ -z $APIKEY || -z $HOST || -z $PASS || -z $USER || -z $PORT ]]; then
     if [[ -z $PORT ]]; then echo "    PORT (-p)"; fi
     if [[ -z $USER ]]; then echo "    USER (-u)"; fi
     if [[ -z $UMLS_DATE ]]; then echo "    UMLS_DATE (-D)"; fi
-    if [[ -z $SEM_VER ]]; then echo "    SEM_VER (-S)"; fi
+    if [[ -z $SEM_VER ]]; then echo "    SEM_VER (-v)"; fi
     echo "See Help (-h) for more information"
     exit 1
 fi

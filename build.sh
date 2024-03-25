@@ -108,7 +108,7 @@ while true; do
             echo "SEM_VER:  $SEM_VER";
             shift 2 ;;
         -d| --dc_date) 
-            $DC_DATE="$2";
+            DC_DATE="$2";
             echo "DC_DATE:  $DC_DATE";
             shift 2 ;;
         -D| --umls_date)

@@ -117,17 +117,22 @@ if [[ -z $APIKEY || -z $HOST || -z $PASS || -z $USER || -z $PORT ]]; then
 fi
 
 # Get UMLS
+echo ""
 cd ./scripts
 bash download_umls.sh $APIKEY $UMLS_DATE
 
+echo ""
 # Get Semmed
 bash download_semmeddb.sh $APIKEY $SEM_VER $UMLS_DATE
 
+echo ""
 # Get Semmed doc types
 bash get_semtype_files.sh 
 
+echo ""
 # Get Drug Central
 bash download_drugcentral.sh --host $HOST --port $PORT --user $USER --pass $PASS --dc_date $DC_DATE
 
+echo ""
 # Get baseline
 bash download_baseline.sh

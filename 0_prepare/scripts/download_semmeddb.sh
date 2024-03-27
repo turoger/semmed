@@ -39,7 +39,7 @@ fi
 #
 echo "... decompressing ${OUT_FILE} to ${NEW_FILE}"
 
-if ! [ -f $(find ../../data -name "semmed*.csv") ]
+if ! [ -f $NEW_FILE ]
 then
     echo "... Copying file headers to $NEW_FILE"
     cp ../../data/col_names.txt $NEW_FILE

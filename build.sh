@@ -173,18 +173,6 @@ if [ -z "${SEM_VER}" ]; then SEM_VER="VER43_R";fi
 if [ -z "${HPO_YEAR}" ]; then HPO_YEAR=1987;fi
 
 #
-# Setup file directory. If it exists skip, otherwise clone it
-#
-# if ! [ -d "./semmed" ]; then
-#     mkdir semmed
-#     cd semmed
-#     git clone https://github.com/turoger/semmed.git --depth 1 --branch=main ./
-# else
-#     cd semmed
-# fi
-
-
-#
 # Setup virtual environment. If it already exists, skip
 #
 echo "Creating virtual environment"
@@ -196,8 +184,6 @@ if ! [ -n "$VENV" ]; then
 else
     echo "Virtual environment already exists"
 fi
-
-
 
 #
 # Download Requirements

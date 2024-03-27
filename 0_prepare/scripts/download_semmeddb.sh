@@ -27,7 +27,7 @@ else
 fi
 echo "... check if $OUT_FILE exists"
 # Check if the file exists
-if ! [ -f $OUTFILE ]; then
+if ! [ -f $OUT_FILE ]; then
     echo "... Copying semmed to $OUT_FILE"
     cp semmed${semmed_ver%%_*}_${umls_date//[!0-9]/}_R_PREDICATION.csv.gz* $OUT_FILE
 fi

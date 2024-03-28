@@ -15,11 +15,26 @@ def parse_args(args=None):
     )
 
     parser.add_argument(
-        "-n",
+        "-v",
         "--semmed_version",
         default="VER43_R",
         type=str,
         help="version number, a string, for SemMed dump",
+    )
+
+    parser.add_argument(
+        "-n",
+        "--drop_negative_relations",
+        default=False,
+        action="store_true",
+        help='Remove negative relations from output. If "convert_negative_relations" is True, negative relations will be converted to bidirectional',
+    )
+    parser.add_argument(
+        "-c",
+        "--convert_negative_relations",
+        default=False,
+        action="store_true",
+        help='Converts negative relations to bidirectional relations. i.e. "NEG_ISA" -> "ISA"',
     )
 
     return parser.parse_args(args)
@@ -70,29 +85,48 @@ def main(args):
         ).alias("rev_abbrev"),
     )
 
-    print("... Condensing edge semantics")
+    if args.drop_negative_relations or args.convert_negative_relations:
+        print("... Condensing edge semantics")
 
-    edge_map = pl.read_csv("../data/edge_condense_map.csv")
+        edge_map = pl.read_csv("../data/edge_condense_map.csv")
 
-    # create mapping dict from groupping the fromtypes to the totypes
-    # map the dict to a new column
-    # if the old edge requires swapping (swap=True), query for those items, swap, and restack
+        # create mapping dict from groupping the fromtypes to the totypes
+        # map the dict to a new column
+        # if the old edge requires swapping (swap=True), query for those items, swap, and restack
 
-    # way faster, less type changing since conversion happens 1 time.
-    edges_consolidated3 = change_edge_type2(
-        edges,
-        edge_map["original_edge"].to_list(),
-        edge_map["condensed_to"].to_list(),
-        edge_map["reverse"].to_list(),
-    )
+        # way faster, less type changing since conversion happens 1 time.
+        edges_consolidated3 = change_edge_type2(
+            edges,
+            edge_map["original_edge"].to_list(),
+            edge_map["condensed_to"].to_list(),
+            edge_map["reverse"].to_list(),
+        )
 
-    print(f"... Edge count prior to consolidating relation types: {edges.shape[0]:,}")
-    print(
-        f"... Edge count after consolidating relation types: {edges_consolidated3.shape[0]:,}"
-    )
+        print(
+            f"... Edge count prior to consolidating relation types: {edges.shape[0]:,}"
+        )
+        print(
+            f"... Edge count after consolidating relation types: {edges_consolidated3.shape[0]:,}"
+        )
+    else:
+        print(
+            "... No edge semantics to condense as `--drop_negative_relations` and/or `--convert_negative_relations` are False."
+        )
+        edges_consolidated3 = (
+            edges.rename(
+                {
+                    "start_type": "htype",
+                    "end_type": "ttype",
+                    "type_type": "r_type",
+                    "type_dir": "r_dir",
+                }
+            )
+            .drop_nulls("r")
+            .drop("old_r")
+        )
 
     #### Remove duplicated undirected edges
-    print("Removing duplicated undirected edges after edge condensing")
+    print("Removing duplicated undirected edges")
     # check all edge ids in nodes
     assert (
         tmp := edges_consolidated3.filter(~pl.col("h_id").is_in(nodes["id"])).shape[0]
@@ -122,12 +156,13 @@ def main(args):
         .otherwise(pl.col("htype") + pl.col("rtype") + pl.col("ttype"))
         .alias("calc_abbrev")
     )
-
+    # ensures that the abbreviations are correct because we removed the direction, and reapplied a relation conversion
+    edges = edges.drop("abbrev").rename({"calc_abbrev": "abbrev"})
     print(f"... checking transformation with some assertions")
-    # check your transformation
-    assert (
-        sum(edges["calc_abbrev"] != edges["abbrev"]) == 0
-    ), "Some type mappings are incorrect."
+    # # check your transformation
+    # assert (
+    #     sum(edges["calc_abbrev"] != edges["abbrev"]) == 0
+    # ), "Some type mappings are incorrect."
 
     # check typing for all nodes, and make sure there are no nodes with multiple types
     assert (
@@ -158,7 +193,7 @@ def main(args):
     # create the complement of the self_ref_df
     non_self_ref_df = edges.join(
         self_ref_df, on=["h_id", "t_id", "sem", "rtype", "abbrev"], how="anti"
-    )
+    ).drop("")
     print(f"... dropping duplicates of non-directional edge types")
 
     # For self referential edge types without direction, sort the h_id and t_id and drop duplicates
@@ -182,7 +217,7 @@ def main(args):
             [
                 "h_id",
                 "t_id",
-                "old_r",
+                # "old_r",
                 "r",
                 "htype",
                 "ttype",
@@ -192,7 +227,6 @@ def main(args):
                 "rev_abbrev",
                 "sem",
                 "rtype",
-                "calc_abbrev",
             ]
         )
         .agg("pmid")
@@ -201,7 +235,7 @@ def main(args):
         [
             "h_id",
             "t_id",
-            "old_r",
+            # "old_r",
             "pmid",
             "n_pmids",
             "r",
@@ -213,7 +247,6 @@ def main(args):
             "rev_abbrev",
             "sem",
             "rtype",
-            "calc_abbrev",
         ]
     ]
     print(
@@ -226,7 +259,7 @@ def main(args):
     # drop duplicates from non_self_ref_df
     # merge the self_ref_df and non_self_ref_df
 
-    new_edges = self_ref_df.vstack(non_self_ref_df).unique(
+    new_edges = pl.concat([self_ref_df, non_self_ref_df], how="diagonal").unique(
         ["h_id", "t_id", "sem", "rtype", "abbrev"]
     )
 

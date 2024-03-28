@@ -414,6 +414,37 @@ def main(args):
         "higher_than": ">",
         "lower_than": ">",
         "same_as": ">",
+        "NEG_ADMINISTERED_TO": "",
+        "NEG_AFFECTS": "",
+        "NEG_ASSOCIATED_WITH": "",
+        "NEG_AUGMENTS": "",
+        "NEG_CAUSES": "",
+        "NEG_COEXISTS_WITH": "",
+        "NEG_COMPLICATES": "",
+        "NEG_CONVERTS_TO": "",
+        "NEG_DIAGNOSES": "",
+        "NEG_DISRUPTS": "",
+        "NEG_INHIBITS": "",
+        "NEG_INTERACTS_WITH": "",
+        "NEG_ISA": "",  # new
+        "NEG_LOCATION_OF": "",
+        "NEG_MANIFESTATION_OF": "",
+        "NEG_MEASUREMENT_OF": "",  # new
+        "NEG_MEASURES": "",  # new
+        "NEG_METHOD_OF": "",
+        "NEG_OCCURS_IN": "",
+        "NEG_PART_OF": "",
+        "NEG_PRECEDES": "",
+        "NEG_PREDISPOSES": "",
+        "NEG_PREVENTS": "",
+        "NEG_PROCESS_OF": "",
+        "NEG_PRODUCES": "",
+        "NEG_STIMULATES": "",
+        "NEG_TREATS": "",
+        "NEG_USES": "",
+        "NEG_higher_than": "",
+        "NEG_lower_than": "",
+        "NEG_same_as": "",  # new
     }
 
     nodes = nodes.with_columns(pl.col("label").replace(sem_abv).alias("abv_label"))

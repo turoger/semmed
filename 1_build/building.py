@@ -117,14 +117,21 @@ def main(args):
     )
 
     # script 3
-    subprocess.run(
-        [
-            "python",
-            "./scripts/03_Condense_edge_semmantics_polars.py",
-            "--semmed_version",
-            args.semmed_version,
-        ]
-    )
+    # script 3 options
+    script_3_dict = {
+        "drop_negative_relations": args.drop_negative_relations,
+        "convert_negative_relations": args.convert_negative_relations,
+    }
+    script_3_ls = [
+        "python",
+        "./scripts/03_Condense_edge_semmantics_polars.py",
+        "--semmed_version",
+        args.semmed_version,
+    ]
+    for k, v in script_3_dict.items():
+        if v == 1:
+            script_3_ls.append(f"--{k}")
+    subprocess.run(script_3_ls)
 
     # script 4
     subprocess.run(

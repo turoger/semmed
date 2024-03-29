@@ -14,7 +14,7 @@ Help()
     ""
     "The data spans from 1950-2023, where a training set are triples that exist prior to a certain date, and the testing set are triples that exist future of said date. This time-resolved dataset consists of 6 metanodes (types): Chemicals & Drugs, Disorders,Genes & Molecular Sequences, Anatomy, Physiology, and Phenomena."
     ""
-    "The pipeline is broken down into 2 main parts: 0_prepare and 1_build. A third part 2_ml, is in development. In order to use this pipeline, you *must* have a UMLS API key. You can obtain one by registering at https://uts.nlm.nih.gov/home.html. Additionally, you must have access to a PostgreSQL database to process some parts of the data."
+    "The pipeline is broken down into 2 main parts: 0_prepare and 1_build. A third part 2_ml, is in development. In order to use this pipeline, you *must* have a UMLS API key. You can obtain one by registering at https://uts.nlm.nih.gov/uts/signup-login. Additionally, you must have access to a PostgreSQL database to process some parts of the data."
     ""
 	"Usage: $SCRIPT [options] <command> [args]"
 	""

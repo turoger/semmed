@@ -6,7 +6,7 @@ The knowledge graph is derived off [SemMedDB](https://skr3.nlm.nih.gov/SemMedDB/
 
 Data is segmented by year. Each year is segmented into a train and test set; the train set is comprised of triples prior to the given year, and the test set is comprised of approved drug-disease triples after the given year. There are a total of 73 datasets spanning from 1950 to 2023, 6 metanodes (types), and 32 unique relations.
 
-To build the dataset in this repository, a UTS license/account is required. [You can apply for one here.](https://uts.nlm.nih.gov//license.html). Additionally, you must have access to a PostgreSQL database for initial processing.
+To build the dataset in this repository, a UTS license/account is required. [You can apply for one here](https://uts.nlm.nih.gov/uts/signup-login) (may take up to 3 days to be approved). Additionally, you must have access to a PostgreSQL database for initial processing.
 
 # Usage
 
@@ -15,6 +15,8 @@ Building the dataset can be done by calling the `build.sh` script with appropria
 ```
 bash build.sh --apikey [UMLS apikey] --host [psql hostname] --pass [psql password] --port [psql port] --user [psql user]
 ```
+
+When building, it is highly recommended to run the command in a persistent session using `screen` or `tmux`.
 
 The `timeresolvedkg.py` file is a pykeen dataset class that will run the entire pipeline (if you supply the minimum flagged information) after adding the file path to the `setup.cfg` and rebuilding the pykeen library with `pip install .`. 
 

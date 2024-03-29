@@ -4,7 +4,7 @@ apikey=$1
 umls_date=$2
 # bashisms
 # ${umls_date,,} example: 2022AA becomes 2022aa
-# Download the umls file. Make sure to input your API-Key in download_from_umpls_api.sh
+# Download the umls file. Make sure to input your API-Key in download_from_umls_api.sh
 #
 echo "Running download_umls.sh"
 echo "... Look for umls-${umls_date} metathesaurus"

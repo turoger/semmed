@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Fill in the following for location of your postgreSQL server
-DUMPDATE=20220822
+DUMPDATE=11012023 # 20220822
 DUMPDIR='../../data/drugcentral_'
 #DUMPDIR=$(pwd | xargs dirname)'/data/drugcentral_'
 SCRIPT='download_drugcentral.sh'

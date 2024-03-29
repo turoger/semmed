@@ -32,14 +32,14 @@ Help()
     "   --base_dir, -b          base directory to setup the time-resolved dataset; defaults to '../data/time_networks-6_metanode'"
     "   --semmed_ver, -v        optional, downloaded semmed/umls dataset version; defaults to 'VER43_R'"
     "   --umls_date, -D         optional, downloaded semmed dataset version date; defaults to '2023AA'"
-    "   --dc_date, -d           optional, downloaded drug central dataset version date; defaults to '20220822'"
+    "   --dc_date, -d           optional, downloaded drug central dataset version date; defaults to '11012023'"
 	"   --drop_neg, -n          optional, data generated will drop negative relations with flag; default unflagged, will keep negative relations"
     "   --convert_neg, -c       optional, convert negative relations to bidirectional relations; defaults to unflagged"
     "   --include_direction, -i optional, include direction in the dataset; defaults to unflagged"
     "   --include_time, -x      optional, include time in the dataset; defaults to unflagged"
     "   --split_hpo, -o         optional, split the dataset for hyperparameter optimization; defaults to unflagged"
     "   --split_ttv, -t         optional, split the dataset for training, testing, and validation; defaults to unflagged"
-    "   --hpo_year, -y          optional, year to split the dataset for hyperparameter optimization; defaults to 2018"
+    "   --hpo_year, -y          optional, year to split the dataset for hyperparameter optimization; defaults to 1987"
     ""
     "NOTE:"
     "This code base is in development and has no guarantees. Use at your own risk."
@@ -167,7 +167,7 @@ fi
 # check for empty variables, supply some defaults
 #
 if [ -z "${BASE_DIR}" ]; then BASE_DIR="../data/time_networks-6_metanode";fi
-if [ -z "${DC_DATE}" ]; then DC_DATE="20220822";fi
+if [ -z "${DC_DATE}" ]; then DC_DATE="11012023";fi # old version "20220822"
 if [ -z "${UMLS_DATE}" ]; then UMLS_DATE="2023AA";fi
 if [ -z "${SEM_VER}" ]; then SEM_VER="VER43_R";fi
 if [ -z "${HPO_YEAR}" ]; then HPO_YEAR=1987;fi

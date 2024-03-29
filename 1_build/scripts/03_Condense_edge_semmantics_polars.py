@@ -157,12 +157,12 @@ def main(args):
         .alias("calc_abbrev")
     )
     # ensures that the abbreviations are correct because we removed the direction, and reapplied a relation conversion
-    edges = edges.drop("abbrev").rename({"calc_abbrev": "abbrev"})
+    # edges = edges.drop("abbrev").rename({"calc_abbrev": "abbrev"})
     print(f"... checking transformation with some assertions")
     # # check your transformation
-    # assert (
-    #     sum(edges["calc_abbrev"] != edges["abbrev"]) == 0
-    # ), "Some type mappings are incorrect."
+    assert (
+        sum(edges["calc_abbrev"] != edges["abbrev"]) == 0
+    ), "Some type mappings are incorrect."
 
     # check typing for all nodes, and make sure there are no nodes with multiple types
     assert (
@@ -422,7 +422,7 @@ def change_edge_type2(
 
 def create_acronym_dict(edges: pl.DataFrame) -> dict:
     """
-    Given edges dataframe, extract relations, htype and ttype to create a dictionary of label abbreviations
+    Given edges dataframe, extract relations, to create a dictionary of label abbreviations
     """
     # check for appropriate columns
     assert (
@@ -434,32 +434,57 @@ def create_acronym_dict(edges: pl.DataFrame) -> dict:
         edges.group_by("r")
         .agg(["htype", "ttype"])
         .with_columns(
-            pl.col("htype").map_elements(lambda x: list(set(x))[0]),
-            pl.col("ttype").map_elements(lambda x: list(set(x))[0]),
+            pl.col("htype").list.first(),
+            pl.col("ttype").list.first(),
+            pl.col("htype").list.unique().list.len().alias("hlen"),
+            pl.col("ttype").list.unique().list.len().alias("tlen"),
         )
     )
 
-    rel_dict = dict()
+    # check if each htype and ttype has only one unique value
+    assert (
+        tmp := edges.filter(pl.col("hlen") > 1).shape[0]
+    ) == 0, f"... There are {tmp:,} edges with multiple htypes"
+    assert (
+        tmp := edges.filter(pl.col("tlen") > 1).shape[0]
+    ) == 0, f"... There are {tmp:,} edges with multiple ttypes"
 
-    # iterate through relations to extract relations to abbreviation dictionary
-    for i, relation in enumerate(list(edges["r"].unique())):
-        split_rel = re.findall("[A-Za-z><]+", relation)
-        mtypes = split_rel[-1]
-        node_mtypes = re.findall("[A-Z]+", mtypes)
-        rel_abbv = re.findall("[a-z><]+", mtypes)[0]
-        h_abbv = node_mtypes[0]
-        t_abbv = node_mtypes[-1]
+    edges = edges.drop(["hlen", "tlen"])
 
-        # account for relations with greater than one underscore '_'
-        if len(split_rel) > 2:
-            rel = split_rel[0] + "_" + split_rel[1]
-
-        else:
-            rel = split_rel[0]
-
-        rel_dict[rel] = rel_abbv
-        rel_dict[edges["htype"][i]] = h_abbv
-        rel_dict[edges["ttype"][i]] = t_abbv
+    # Extracts relation abbreviations from relations
+    edges = edges.with_columns(
+        x := pl.col("r")
+        .str.extract_all("[A-Za-z><]+")
+        .alias(
+            "split_rel"
+        ),  # splits relations into components. ex: "PART_OF_PHpoCD" -> ["PART", "OF", "PHpoCD"]
+        x.list.get(-1).alias(
+            "mtypes"
+        ),  # gets the last component of the prev. list ex: "PHpoCD"
+    ).with_columns(
+        (x := pl.col("mtypes").str.extract_all("[A-Z]+"))
+        .list.get(0)
+        .alias("h_abbv"),  # gets the h_abbv. ex: "PH"
+        x.list.get(1).alias("t_abbv"),  # gets the t_abbv. ex: "CD"
+        pl.col("mtypes")
+        .str.extract_all("[a-z><]+")
+        .list.get(0)
+        .alias("rel_abbv"),  # gets the rel_abbv. ex: "po"
+        pl.when(pl.col("split_rel").list.len() > 2)  # gets the rel. ex: "PART_OF"
+        .then(
+            pl.col("split_rel")
+            .list.slice(
+                0, pl.col("split_rel").list.len() - 1
+            )  # if there are more than 2 components, join them
+            .list.join("_")
+        )
+        .otherwise(pl.col("split_rel").list.first())
+        .alias("rel"),
+    )
+    # get unique relations and their abbreviations
+    edges = edges.unique(["rel", "rel_abbv"])
+    # assign a dictionary of relations and their abbreviations
+    rel_dict = dict(zip(edges["rel"], edges["rel_abbv"]))
 
     return rel_dict
 

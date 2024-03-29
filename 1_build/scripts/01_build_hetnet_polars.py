@@ -398,6 +398,7 @@ def main(args):
         "LOCATION_OF": "",
         "MANIFESTATION_OF": "",
         "MEASUREMENT_OF": "",
+        "MEASURES": "",
         "METHOD_OF": "",
         "NOM": "",
         "OCCURS_IN": "",

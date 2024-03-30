@@ -28,7 +28,7 @@ In order to use the repository scripts manually, a python environment should be 
 
 Use anaconda or mamba with environment.yml to run this code. A minimum environment can be created using the `mini_env.yml` file.
 
-use `conda env create -f mini_semmed.yml -y` to install the enviornment. Then use `source activate mini_semmed` to start the environment.
+use `conda env create -f mini_env.yml -y` to install the enviornment. Then use `source activate mini_semmed` to start the environment.
 
 ## Requirements
 

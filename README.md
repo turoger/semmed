@@ -2,7 +2,7 @@
 
 This repository contains code to streamline the creation of a time-resolved drug repurposing heterogenous network benchmark. This dataset aims to better model knowledge graph completion algorithm performance on predicting unseen future approved drug-disease indications. 
 
-The knowledge graph is derived off [SemMedDB](https://skr3.nlm.nih.gov/SemMedDB/) and is extended by approved drug-disease indications from [DrugCentral](http://drugcentral.org/) as highlighted in [Mayers et. al (2019)](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6907279/). 
+The knowledge graph is derived off [SemMedDB](https://skr3.nlm.nih.gov/SemMedDB/) and is extended by approved drug-disease indications from [DrugCentral](http://drugcentral.org/) as highlighted in [Mayers et. al (2019)](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC6907279/). This repository updates the original pipeline by replacing notebook executions with python scripts, refactoring code to decrease dependencies and increase speed, adds option flagging and various bug fixes. 
 
 Data is segmented by year. Each year is segmented into a train and test set; the train set is comprised of triples prior to the given year, and the test set is comprised of approved drug-disease triples after the given year. There are a total of 73 datasets spanning from 1950 to 2023, 6 metanodes (types), and 32 unique relations.
 
@@ -13,7 +13,8 @@ To build the dataset in this repository, a UTS license/account is required. [You
 Building the dataset can be done by calling the `build.sh` script with appropriate flags as seen in the example below.
 
 ```
-bash build.sh --apikey [UMLS apikey] --host [psql hostname] --pass [psql password] --port [psql port] --user [psql user]
+bash build.sh --apikey [UMLS apikey] --host [psql hostname] --pass [psql password] \
+ --port [psql port] --user [psql user]
 ```
 
 When building, it is highly recommended to run the command in a persistent session using `screen` or `tmux`.
@@ -70,7 +71,7 @@ Michael Mayers, Tong Shu Li, Núria Queralt-Rosinach, Andrew I. Su. (2019) Time-
 
 ## SemMedDB
 
-Kilicoglu, H, Shin D, Fiszman M, Rosemblat G, Rindflesch TC. (2012) SemMedDB: A PubMed-scale repository of biomedical semantic predications. Bioinformatics, 28(23), 3158-60.
+Halil Kilicoglu,Dongwook Shin, Marcelo Fiszman, Graciela Rosemblat, Thomas C Rindflesch. (2012) SemMedDB: A PubMed-scale repository of biomedical semantic predications. Bioinformatics, 28(23), 3158-60. [https://doi.org/10.1093/bioinformatics/bts591](https://doi.org/10.1093/bioinformatics/bts591)
 
 ## DrugCentral
 

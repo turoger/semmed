@@ -18,9 +18,11 @@ To ensure all scripts run properly, please enable the virtual enviornment `mini_
 * Please add your personal UMLS apikey as well as PostgreSQL server information as flags to the script before running it.
 
 ```
-bash download_requirements.sh --apikey [umls apikey] --dc_date [drugcentral version] --host [psql hostname] --port [psql port] --user [psql username] --pass [psql password]
+bash download_requirements.sh --apikey [umls apikey] --dc_date [drugcentral version] \
+--host [psql hostname] --port [psql port] --user [psql username] --pass [psql password]
 
-bash download_requirements.sh -a [umls apikey] -d [drugcentral version] -H [psql hostname] -p [psql port] -u [psql username] -P [psql password]
+bash download_requirements.sh -a [umls apikey] -d [drugcentral version] -H [psql hostname] \
+-p [psql port] -u [psql username] -P [psql password]
 ```
 
 #### Requirements
@@ -37,7 +39,8 @@ bash download_requirements.sh -a [umls apikey] -d [drugcentral version] -H [psql
 * `./preprocessing.py`
 * This script will extract publication dates and associate them to specific pubmed ids.
 ```
-conda run -n mini_semmed --no-capture-output python preprocessing.py --semmed_ver 'VER43_R' --umls_date '2023AA' # if you want to run non-interactively
+conda run -n mini_semmed --no-capture-output python preprocessing.py --semmed_ver 'VER43_R' \
+ --umls_date '2023AA' # if you want to run non-interactively
 
 python preprocessing.py -v [semmed version] -D [umls year code] # otherwise activate an environment first
 ```

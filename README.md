@@ -10,7 +10,23 @@ To build the dataset in this repository, a UTS license/account is required. [You
 
 # Usage
 
-Building the dataset can be done by calling the `build.sh` script with appropriate flags as seen in the example below.
+* Please install `pv` and `postgresql` prior to running.
+```
+# on ubuntu
+sudo apt-get update
+sudo apt-get upgrade
+
+sudo apt install pv postgresql
+```
+
+* Create a psql user and password
+```
+sudo -u postgres psql # login to psql, create a username and password as postgres, quit.
+postgres=# create user [myuser] with encrypted password ['mypass']
+postgres=# \q 
+```
+
+* Building the dataset can be done by calling the `build.sh` script with appropriate flags as seen in the example below.
 
 ```
 bash build.sh --apikey [UMLS apikey] --host [psql hostname] --pass [psql password] \

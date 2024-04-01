@@ -179,7 +179,7 @@ echo "Creating virtual environment"
 eval "$(conda shell.bash hook)" # instantiates conda hook
 VENV=$(conda env list | grep mini_semmed | awk '{print $1}')
 if ! [ -n "$VENV" ]; then
-    conda env create -f mini_env.yml -y
+    conda env create -f mini_env.yml
     echo "Virtual environment created"
 else
     echo "Virtual environment already exists"

@@ -21,7 +21,7 @@ fi
 
 # Make sure all the files are OK
 echo "... checking md5 checksum"
- if [ -f $(find . -name all.md5) ]; then
+ if [ -f all.md5 ]; then
     echo "... MD5 checksum file already exists. Checking all.md5"
 else
     echo "... MD5 checksum file does not exist. Catting all md5 files to all.md5"

@@ -41,7 +41,7 @@ def parse_args(args=None):
     parser.add_argument(
         "-d",
         "--dc_date",
-        default="20220822",
+        default="11012023",
         type=str,
         help="version date, a string, for DrugCentral dump",
     )

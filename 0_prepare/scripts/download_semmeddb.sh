@@ -18,7 +18,8 @@ echo "Running download_semmeddb.sh"
 echo "... downloading semmed files from UMLS to:"
 echo $OUT_FILE
 
-if ! [ -f $( find . -name semmed${semmed_ver%%_*}_${umls_date//[!0-9]/}_R_PREDICATION.csv.gz* ) ]
+#if ! [ -f $( find . -name semmed${semmed_ver%%_*}_${umls_date//[!0-9]/}_R_PREDICATION.csv.gz* ) ]
+if ! [ -f semmed${semmed_ver%%_*}_${umls_date//[!0-9]/}_R_PREDICATION.csv.gz* ]
 then
     echo "... Local copy of semmed not found. Downloading semmed from UMLS."
     bash download_from_umls_api.sh --apikey $apikey --link https://data.lhncbc.nlm.nih.gov/umls-restricted/ii/tools/SemRep_SemMedDB_SKR/semmed${semmed_ver%%_*}_${umls_date//[!0-9]/}_R_PREDICATION.csv.gz
@@ -44,7 +45,12 @@ then
     echo "... Copying file headers to $NEW_FILE"
     cp ../../data/col_names.txt $NEW_FILE
     echo "... Unzipping and adding to header"
-    gzip -cd $OUT_FILE | pv >> $NEW_FILE
+    if [ "$(dpkg -l | awk '/pv/ {print }'| wc -l)" -ge 1 ]; then
+        gzip -cd $OUT_FILE | pv >> $NEW_FILE
+    else
+        echo "pv not found. Using cat instead"
+        gzip -cd $OUT_FILE | cat >> $NEW_FILE
+    fi
 #pv | zcat -cd $OUT_FILE | cat >> $NEW_FILE
 else
     echo "... File already exists"

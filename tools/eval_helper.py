@@ -213,6 +213,26 @@ class TimeDrugRepo(object):
 
         return picked_years, totals, indcounts
 
+    def recommend_compound_disease_pair(self) -> pl.DataFrame:
+        """
+        Takes a recommended dataframe and returns the compound-disease pairs for each year.
+        Can use this to check if the recommendations are IID.
+        """
+        df = (
+            self.recommended_df.explode(
+                ["year", "compound_semmed_id", "disease_semmed_id"]
+            )
+            .with_columns(
+                comp_dis_id=pl.col("compound_semmed_id")
+                + "-"
+                + pl.col("disease_semmed_id")
+            )
+            .group_by(["younger_year", "counts"])
+            .agg(["comp_dis_id", "year"])
+            .sort("counts", descending=True)
+        )
+        return df
+
     def run_model(self, **kwargs):
         """
         Wrapper function for pykeen.pipeline.pipeline that loops over all years in self.years_ls in the dataset

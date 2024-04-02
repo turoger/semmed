@@ -62,7 +62,7 @@ class TimeDrugRepo(object):
         time = (
             "time" if self.build_dataset_kwargs.get("include_time", False) else "notime"
         )
-        headers = ["h", "r", "t", "time"] if time == "time" else ["h", "r", "t"]
+        headers = ["h", "r", "t", "year"] if time == "time" else ["h", "r", "t"]
         file_dir = os.path.join(dir, "2023")
         train_dir = os.path.join(file_dir, f"train_{time}.txt")
         ind_dir = os.path.join(file_dir, "indications.parquet")
@@ -78,10 +78,8 @@ class TimeDrugRepo(object):
         # import ind
         ind = pl.read_parquet(source=ind_dir)
         ind = ind.with_columns(
-            pl.col("approval_date")
-            .map_elements(lambda x: x.split("-")[0])
-            .alias("year")
-        )  # get indication year
+            pl.col("approval_year").str.split("-").list.first().alias("year")
+        ).drop_nulls()  # get indication year
 
         # import test
         test_imports = [
@@ -102,8 +100,8 @@ class TimeDrugRepo(object):
         if time == "notime":
             # get date for train and test
 
-            train = get_time(train, file_dir)
-            test = get_time(test, file_dir)
+            train = get_time(train, file_dir).drop_nulls()
+            test = get_time(test, file_dir).drop_nulls()
 
         return train, test, ind
 
@@ -113,21 +111,32 @@ class TimeDrugRepo(object):
         ----------
         :param: train :    train file to solicit identifier to year links
         """
-        train = self.train
-        train_time = (
-            train[["h", "time"]]
-            .vstack(
-                train[["t", "time"]].rename({"t": "h"})
-            )  # concatenate compound-time with disease-time
-            .unique()  # remove duplicate entries
+        train, test, ind = self.train, self.test, self.ind
+
+        # combine train and test nodes together and get the min year of each node
+
+        node_time = (
+            pl.concat(
+                [
+                    train.select(["h", "year"]),
+                    train.select(["t", "year"]).rename({"t": "h"}),
+                    test.select(["h", "year"]),
+                    test.select(["t", "year"]).rename({"t": "h"}),
+                ]
+            )
+            .unique()
             .group_by("h")
-            .agg(
-                pl.col("time").map_elements(lambda x: x.sort())
+            .agg("year")
+            .with_columns(
+                pl.col("year").list.sort(descending=False),
+                pl.col("year").list.min().alias("min_year"),
             )  # group by nodes to get [time] sorted from low to high (1950->2023)
-        ).with_columns(pl.col("time").map_elements(lambda x: min(x)).alias("min_time"))
+            .drop_nulls()
+        )
+
         # construct dictionary
         node_time_dict = dict(
-            zip(train_time["h"], [str(i) for i in train_time["min_time"]])
+            zip(node_time["h"], [str(i) for i in node_time["min_year"]])
         )
 
         return node_time_dict
@@ -144,8 +153,12 @@ class TimeDrugRepo(object):
         train, test, ind = self.train, self.test, self.ind
         node_time_dict = self.node_time_dictionary
         combo_ct = self.models_to_run
+
         # create new indications file
-        ind2 = ind[["compound_semmed_id", "disease_semmed_id", "approval_year"]]
+        ind2 = ind[["compound_semmed_id", "disease_semmed_id", "year"]].filter(
+            pl.col("compound_semmed_id").is_in(node_time_dict.keys()),
+            pl.col("disease_semmed_id").is_in(node_time_dict.keys()),
+        )
 
         ind2 = (
             ind2.with_columns(  # create two new columns based on entity->yr mapping
@@ -167,7 +180,7 @@ class TimeDrugRepo(object):
             )
             .with_columns(  # create column that takes the difference between approval year and appearance of entity in KG
                 approval_younger_year_diff=(
-                    pl.col("approval_year").cast(pl.Int64)
+                    pl.col("year").cast(pl.Int64)
                     - pl.col("younger_year").cast(pl.Int64)
                 ),
             )
@@ -183,16 +196,14 @@ class TimeDrugRepo(object):
                 ),  # make sure its in the test set
                 pl.col("approval_younger_year_diff")
                 > 0,  # predict the future, not the current
-                pl.col("approval_year").cast(pl.Int64) > 1950,  # dataset lower bound
+                pl.col("year").cast(pl.Int64) > 1950,  # dataset lower bound
                 pl.col("younger_year").cast(pl.Int64) >= 1950,  # dataset lower bound
             )
             .group_by("younger_year")
             .agg(
-                ["approval_year", "compound_semmed_id", "disease_semmed_id"]
+                ["year", "compound_semmed_id", "disease_semmed_id"]
             )  # column lists to return
-            .with_columns(
-                pl.col("approval_year").map_elements(lambda x: len(x)).alias("counts")
-            )  # ind counts/yr
+            .with_columns(pl.col("year").list.len().alias("counts"))  # ind counts/yr
             .sort(by="counts", descending=True)
         )
 
@@ -275,10 +286,10 @@ def get_time(df: pl.DataFrame, file_dir: str) -> pl.DataFrame:
     combined_df = pl.concat(
         [
             edges.select(["h_id", "r", "t_id", "first_pub"])
-            .rename({"first_pub": "time"})
-            .with_columns(pl.col("time").cast(str)),
+            .rename({"first_pub": "year"})
+            .with_columns(pl.col("year").cast(str)),
             indications.select(["h_id", "r", "t_id", "approval_year"]).rename(
-                {"approval_year": "time"}
+                {"approval_year": "year"}
             ),
         ]
     ).unique()

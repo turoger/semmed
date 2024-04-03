@@ -31,7 +31,7 @@ class TimeDrugRepo(object):
         data_dir: str = "../data/time_networks-6_metanode/",
         models_to_run: int = 5,
         train_models: bool = False,
-        steps: int = 1511121,
+        steps: int = 1511121,  #  the number of triples in the 1987 dataset. Use this normalize batch size to dataset size
         build_dataset_kwargs: dict = {},
         **kwargs,
     ):
@@ -240,10 +240,12 @@ class TimeDrugRepo(object):
         print(f"Running Models for the following years {self.recommended_years}")
         for year in self.recommended_years:
             # replace file name everytime you run the algorithm, so no collisions
+            year = str(year)
             checkpoint_file_name = f"{kwargs['training_kwargs']['checkpoint_name'].split('.')[0]}_{year}.pt"
 
             # get training triples by loading them from trkg
-            train_sz = trkg(build_dataset_kwargs={}, year=year).training.num_triples
+            dataset = trkg(build_dataset_kwargs=self.build_dataset_kwargs, year=year)
+            train_sz = dataset.training.num_triples
 
             batch_size = (
                 kwargs["training_kwargs"]["batch_size"] * train_sz
@@ -253,9 +255,7 @@ class TimeDrugRepo(object):
                     "training_kwargs": ChainMap(
                         {
                             "checkpoint_name": checkpoint_file_name,
-                            "batch_size": batch_size[
-                                0
-                            ],  # change num epochs with reference to batch sizes so all steps are the same
+                            "batch_size": batch_size,  # change num epochs with reference to batch sizes so all steps are the same
                         },
                         kwargs["training_kwargs"],
                     )
@@ -266,10 +266,10 @@ class TimeDrugRepo(object):
             print(f"Checkpoint name: {checkpoint_file_name}")
 
             res = pipeline(
-                dataset=trkg(year=f"{year}")
+                dataset=dataset,
                 # training=os.path.join(self.data_dir, str(year), "train_notime.txt"),
                 # testing=os.path.join(self.data_dir, str(year), "test_notime.txt"),
-                ** new_kwargs,
+                **new_kwargs,
             )
 
 

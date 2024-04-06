@@ -1,7 +1,23 @@
+from typing import (
+    Any,
+    ClassVar,
+    Dict,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Type,
+    Union,
+    cast,
+)
+
 import numpy as np
 import pandas as pd
 import polars as pl
 import pykeen
+import pykeen.datasets.timeresolvedkg as trkg
 import torch
 from pykeen.constants import PYKEEN_CHECKPOINTS
 from pykeen.pipeline import pipeline
@@ -23,43 +39,104 @@ from pykeen.predict import predict_all
 ###
 
 
-def load_pykeen_train(chkpt: str, train_path: str):
+def load_pykeen_dataset(
+    build_dataset_kwargs: Optional[Mapping[str, Any]] = {}, year: str = "1950"
+) -> "TimeResolvedKG":
     """
-    Takes a PyKEEN checkpoint and training path to import a PyKEEN model
+    Takes parameters used to build the dataset and a given year to import PykEEN dataset class
     """
+
+    return trkg.TimeResolvedKG(build_dataset_kwargs=build_dataset_kwargs, year=year)
+
+
+def load_pykeen_triples(
+    build_dataset_kwargs: Optional[Mapping[str, Any]] = {}, year: str = "1950"
+) -> Tuple["TriplesFactory", "TriplesFactory", Optional["TriplesFactory"]]:
+    """
+    Takes parameters used to build the dataset and a given year to import PykEEN triplesfactory
+
+    """
+    the_dataset = load_pykeen_dataset(
+        build_dataset_kwargs=build_dataset_kwargs, year=year
+    )
+
+    train = the_dataset.training
+    test = the_dataset.testing
+
+    if build_dataset_kwargs.get("split_ttv", 0) != 0:
+        valid = the_dataset.validation
+
+        return train, test, valid
+
+    else:
+        return train, test
+
+
+def load_pykeen_triples_from_path(
+    chkpt: str, paths: List[Optional[str]]
+) -> Tuple["TriplesFactory", "TriplesFactory", Optional["TriplesFactory"]]:
+    """
+    Takes a PyKEEN checkpoint and paths ["train/path","test/path","valid/path"] to import a PyKEEN model
+    """
+    # sample checkpoint location .data/pykeen/checkpoints/TransE_neg_ttv_1950.pt"
     chkpt = torch.load(PYKEEN_CHECKPOINTS.joinpath(chkpt))
+
+    # check if there are too little or too many paths
+    assert len(paths) >= 2, "Please provide at least a train and test path"
+    assert len(paths) <= 3, "Please provide at most a train, test and valid path"
+
     train = pykeen.triples.TriplesFactory.from_path(
-        path=train_path,
+        path=paths[0],
         entity_to_id=chkpt["entity_to_id_dict"],
         relation_to_id=chkpt["relation_to_id_dict"],
-        create_inverse_triples=True,
+        create_inverse_triples=False,
     )
-    return train
-
-
-def load_pykeen_test(chkpt: str, test_path: str):
-    """
-    Takes a PyKEEN checkpoint and training path to import a PyKEEN model
-    """
-    chkpt = torch.load(PYKEEN_CHECKPOINTS.joinpath(chkpt))
     test = pykeen.triples.TriplesFactory.from_path(
-        path=test_path,
+        path=paths[1],
         entity_to_id=chkpt["entity_to_id_dict"],
         relation_to_id=chkpt["relation_to_id_dict"],
-        create_inverse_triples=True,
+        create_inverse_triples=False,
     )
-    return test
+
+    if len(paths) == 3:
+        valid = pykeen.triples.TriplesFactory.from_path(
+            path=paths[2],
+            entity_to_id=chkpt["entity_to_id_dict"],
+            relation_to_id=chkpt["relation_to_id_dict"],
+            create_inverse_triples=False,
+        )
+        return train, test, valid
+
+    return train, test
+
+
+# def load_pykeen_test_triples_from_path(chkpt: str, test_path: str):
+#     """
+#     Takes a PyKEEN checkpoint and training path to import a PyKEEN model
+#     """
+#     chkpt = torch.load(PYKEEN_CHECKPOINTS.joinpath(chkpt))
+#     test = pykeen.triples.TriplesFactory.from_path(
+#         path=test_path,
+#         entity_to_id=chkpt["entity_to_id_dict"],
+#         relation_to_id=chkpt["relation_to_id_dict"],
+#         create_inverse_triples=True,
+#     )
+#     return test
 
 
 def predict_on_test(
     pykeen_model: pykeen.models.base.Model,
-    train: "TriplesFactory",
-    test: "TriplesFactory",
-    test_path: str,
+    pykeen_dataset_object: "TimeResolvedKG",
 ) -> pd.DataFrame:
     """
     Takes a PyKEEN model and testing path to generate all compound indications on test set
     """
+    train, test = load_pykeen_triples()
+    {
+        train: "TriplesFactory",
+        test: "TriplesFactory",
+        test_path: str,
+    }
     test_df = pd.read_csv(test_path, sep="\t", names=["h", "r", "t"])
     test_dict = dict(zip(test_df["h"], test_df["r"]))
 
@@ -127,7 +204,7 @@ def get_mrr(results_df: pd.DataFrame) -> float:
     Given a pykeen returned dataframe, get the MRR from known ranks
     """
     if "known_ranks" not in results_df.columns:
-        results_df = get_rr(results_df)
+        results_df = get_rank(results_df)
 
     all_ranks = [
         float(j) for i in results_df.known_ranks for j in i
@@ -144,7 +221,7 @@ def get_hits_at_k(results_df: pd.DataFrame, k: int = 10) -> float:
     * default k value is 10
     """
     if "known_ranks" not in results_df.columns:
-        results_df = get_rr(results_df)
+        results_df = get_rank(results_df)
 
     all_ranks = [float(j) for i in results_df.known_ranks for j in i]
     k_array = np.full(np.array(all_ranks).shape, k, dtype=float)

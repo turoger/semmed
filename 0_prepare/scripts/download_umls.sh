@@ -52,7 +52,7 @@ for FILE in MRCONSO MRHIER MRREL MRSAT MRXNW_ENG MRXW
         then
             echo "... Constructing $FILE.RRF"
             # Cat the pieces together
-            zcat $(find . -name "$FILE*.gz")| sort | \
+            zcat $(find . -name "$FILE*.gz" | sort ) | \
             tqdm --desc "Processing $FILE" --bytes \
             --total `du -cb $(find . -name "$FILE*.gz") | grep total | awk '{print $1}'` \
             > $FILE.RRF;

@@ -21,9 +21,9 @@ sudo apt install pv postgresql
 
 * Create a psql user and password
 ```
-sudo -u postgres psql # login to psql, create a username and password as postgres, quit.
-postgres=# create user [myuser] with encrypted password ['mypass']
-postgres=# \q 
+user@server:~$ sudo su postgres # login to psql, create a username and password as postgres, quit.
+postgres:~$ createuser [myuser] --createdb --pwprompt
+postgres:~$ exit
 ```
 
 * Building the dataset can be done by calling the `build.sh` script with appropriate flags as seen in the example below.

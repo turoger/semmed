@@ -31,6 +31,7 @@ class TimeDrugRepo(object):
         data_dir: str = "../data/time_networks-6_metanode/",
         models_to_run: int = 5,
         train_models: bool = False,
+        train_models_swap: bool = False,
         steps: int = 1511121,  #  the number of triples in the 1987 dataset. Use this normalize batch size to dataset size
         build_dataset_kwargs: dict = {},
         **kwargs,
@@ -38,6 +39,7 @@ class TimeDrugRepo(object):
         self.data_dir = data_dir
         self.models_to_run = models_to_run
         self.train_models = train_models
+        self.train_models_swap = train_models_swap
         self.steps = steps
         self.build_dataset_kwargs = build_dataset_kwargs
         self.train, self.test, self.ind = self.import_df()
@@ -50,6 +52,9 @@ class TimeDrugRepo(object):
 
         if self.train_models:
             self.run_model(**kwargs)
+
+        if self.train_models_swap:
+            self.run_model_swap_test_valid(**kwargs)
 
     def import_df(self) -> pl.DataFrame:
         """
@@ -269,6 +274,45 @@ class TimeDrugRepo(object):
                 dataset=dataset,
                 # training=os.path.join(self.data_dir, str(year), "train_notime.txt"),
                 # testing=os.path.join(self.data_dir, str(year), "test_notime.txt"),
+                **new_kwargs,
+            )
+
+    def run_model_swap_test_valid(self, **kwargs):
+        """
+        Wrapper function for pykeen.pipeline.pipeline that loops over all years in self.years_ls in the dataset
+        """
+        print(f"Running Models for the following years {self.recommended_years}")
+        for year in self.recommended_years:
+            # replace file name everytime you run the algorithm, so no collisions
+            year = str(year)
+            checkpoint_file_name = f"{kwargs['training_kwargs']['checkpoint_name'].split('.')[0]}_{year}.pt"
+
+            # get training triples by loading them from trkg
+            dataset = trkg(build_dataset_kwargs=self.build_dataset_kwargs, year=year)
+            train_sz = dataset.training.num_triples
+
+            batch_size = (
+                kwargs["training_kwargs"]["batch_size"] * train_sz
+            ) // self.steps
+            new_kwargs = ChainMap(
+                {
+                    "training_kwargs": ChainMap(
+                        {
+                            "checkpoint_name": checkpoint_file_name,
+                            "batch_size": batch_size,  # change num epochs with reference to batch sizes so all steps are the same
+                        },
+                        kwargs["training_kwargs"],
+                    )
+                },
+                kwargs,
+            )
+
+            print(f"Checkpoint name: {checkpoint_file_name}")
+
+            res = pipeline(
+                training=dataset.training_path,
+                testing=dataset.validation_path,
+                validation=dataset.testing_path,
                 **new_kwargs,
             )
 

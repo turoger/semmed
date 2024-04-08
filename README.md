@@ -21,7 +21,8 @@ sudo apt install pv postgresql
 
 * Create a psql user and password
 ```
-user@server:~$ sudo su postgres # login to psql, create a username and password as postgres, quit.
+# login to psql, create a username and password as postgres, quit.
+user@server:~$ sudo su postgres 
 postgres:~$ createuser [myuser] --createdb --pwprompt
 postgres:~$ exit
 ```

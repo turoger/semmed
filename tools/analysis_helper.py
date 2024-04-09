@@ -1,3 +1,4 @@
+import pathlib
 from typing import (
     Any,
     ClassVar,
@@ -200,7 +201,7 @@ class AnalysisHelper(object):
                 "tail",
                 "both",
             ], "query_answer must be one of ['head','tail','both']"
-
+            self.query_answer = query_answer
         # build a dictionary for each condition
         query_answer_dict = {
             "head": dict(zip(predict_df["t"], predict_df["r"])),
@@ -296,7 +297,7 @@ class AnalysisHelper(object):
     @staticmethod
     def get_rank_from_position(x: List[int]) -> np.array:
         """
-        Gets positions of all hits and returns as an array
+        Gets positions of all hits and returns as an array. Accounts for ties, rank starts at 1.
 
         Example
         ------------
@@ -310,12 +311,24 @@ class AnalysisHelper(object):
 
         return b
 
+    @staticmethod
+    def get_true_index(x: List[int]) -> np.array:
+        """
+        Gets the position of all hits and returns as as an array.
+
+        Example
+        ------------
+        hits_list = [0,1,1,0,1,0,0,1]
+        get_true_index(hits_list) -> [1,2,4,7]
+        """
+        a = np.array(x)
+        return np.where(a == 1)[0].tolist()
+
     def get_rank(
         self,
     ) -> pd.DataFrame:
         """
         Takes a dataframe of PyKEEN model predictions and returns dataframe with list of  rank vals
-        names: {True|False} returns results as dictionary {'in_testing_item':'rank'}
         """
 
         assert (
@@ -331,7 +344,7 @@ class AnalysisHelper(object):
             .map_elements(lambda x: self.get_rank_from_position(x))
             .alias("known_ranks")
         )
-
+        self.df = df
         return df
 
     def get_mrr(
@@ -383,3 +396,72 @@ class AnalysisHelper(object):
         )
 
         return hitsk
+
+    def extract_answers_from_rank(self) -> pl.DataFrame:
+        """
+        Extracts answers from rank dataframe
+        """
+        assert (
+            type(self.df) == pl.DataFrame
+        ), "No dataframe found, please run self.predict_on() first"
+
+        results_df = self.df
+
+        group = "in_testing" if self.group == "test" else "in_validation"
+
+        results_df = results_df.with_columns(
+            pl.col(group)
+            .map_elements(lambda x: self.get_true_index(x))
+            .alias("known_trues")
+        )
+
+        # get dataframe of query and answer labels
+        results_df = (
+            results_df.explode(["known_ranks", "known_trues"])
+            .with_columns(
+                pl.col("answer_label").list.get(pl.col("known_trues")).alias("answers")
+            )
+            .drop(group)
+        )
+        self.answers_df = results_df
+        return results_df
+
+    def extract_relative_year(self) -> pl.DataFrame:
+        """
+        Extracts relative year from indications
+        """
+        # get results from self.extract_answers_from_rank
+        assert (
+            type(self.answers_df) == pl.DataFrame
+        ), "No dataframe found, please run self.extract_answers_from_rank() first"
+
+        results_df = self.answers_df
+
+        # get local directory to import indications
+        ind_dir = pathlib.Path(self.dataset.training_path).parent.joinpath(
+            "indications.parquet"
+        )
+        ind = pl.read_parquet(
+            ind_dir,
+            columns=["compound_semmed_id", "disease_semmed_id", "year_diff"],
+        ).rename({"compound_semmed_id": "h", "disease_semmed_id": "t"})
+
+        # merge indications with results_df
+        if self.query_answer == "both" or self.query_answer == "head":  # (?, r, t)
+            results_df_head = results_df.filter(pl.col("query") == "head")
+            results_df_head = results_df_head.join(
+                ind, left_on=["query_label", "answers"], right_on=["t", "h"], how="left"
+            )
+
+        if self.query_answer == "both" or self.query_answer == "tail":  # (h, r, ?)
+            results_df_tail = results_df.filter(pl.col("query") == "tail")
+            results_df_tail = results_df_tail.join(
+                ind, left_on=["query_label", "answers"], right_on=["h", "t"], how="left"
+            )
+
+        if self.query_answer == "head":
+            return results_df_head
+        elif self.query_answer == "tail":
+            return results_df_tail
+        else:
+            return pl.concat([results_df_head, results_df_tail])

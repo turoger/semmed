@@ -85,78 +85,18 @@ class AnalysisHelper(object):
             if self.train_models_swap:
                 test = the_dataset.validation
                 valid = the_dataset.testing
+                self.test_dir = the_dataset.validation_path
+                self.valid_dir = the_dataset.testing_path
             else:
                 test = the_dataset.testing
                 valid = the_dataset.validation
+                self.test_dir = the_dataset.testing_path
+                self.valid_dir = the_dataset.validation_path
 
             return train, test, valid
 
         else:
             return train, test
-
-    def predict_qa(
-        self,
-        df: pd.DataFrame,
-        # hr: Optional[Mapping[int, int] | Mapping[str, str]],
-        # rt: Optional[Mapping[int, int] | Mapping[str, str]],
-        answer: Optional[str] = "both",
-    ):
-        """
-        Gets "h","t", or "both" predictions for a given dataframe of h,r,t triples
-        returns a dataframe with the predictions
-        """
-        if answer != None:
-            assert answer in [
-                "head",
-                "tail",
-                "both",
-            ], "answer must be one of ['head','tail','both']"
-
-        answer_dict = {
-            "head": dict(zip(df["t"], df["r"])),
-            "tail": dict(zip(df["h"], df["r"])),
-        }
-        if answer == "head" or answer == "both":
-            t_res_ls = list()
-            for disease, relation in answer_dict["head"].items():
-                pred = pykeen.predict.predict_target(
-                    model=pykeen_model,
-                    tail=disease,
-                    relation=relation,
-                    triples_factory=train,
-                ).add_membership_columns(
-                    testing=test,
-                    validation=(
-                        valid
-                        if self.build_dataset_kwargs.get("split_ttv", 0) != 0
-                        else None
-                    ),
-                )  # check if tail predictions are in 'predict_triple' (correct answer)
-                pred = pl.DataFrame(pred.df)
-                pred = pred.with_columns(h=pl.lit(compound))
-                h_res_ls.append(pred)
-            df_t = pl.concat(h_res_ls)
-
-        elif answer == "tail" or answer == "both":
-            h_res_ls = list()
-            for compound, relation in answer_dict["tail"].items():
-                pred = pykeen.predict.predict_target(
-                    model=pykeen_model,
-                    head=compound,
-                    relation=relation,
-                    triples_factory=train,
-                ).add_membership_columns(
-                    testing=test,
-                    validation=(
-                        valid
-                        if self.build_dataset_kwargs.get("split_ttv", 0) != 0
-                        else None
-                    ),
-                )  # check if tail predictions are in 'predict_triple' (correct answer)
-                pred = pl.DataFrame(pred.df)
-                pred = pred.with_columns(h=pl.lit(compound))
-                t_res_ls.append(pred)
-            df_h = pl.concat(t_res_ls)
 
     def predict_on(
         self,
@@ -170,19 +110,16 @@ class AnalysisHelper(object):
         query_answer can be 'both', 'tail', 'head'. 'both' returns both head and tail predictions, 'tail' returns only tail predictions, 'head' returns only head predictions
         """
         self.group = group
+        self.query_answer = query_answer
 
         # setup train, test, valid if there is a validation set available
         if self.build_dataset_kwargs.get("split_ttv", 0) != 0:
             train, test, valid = self.load_pykeen_triples()
-            t_pred_agg_ls = ["tail_label", "score", "in_testing", "in_validation"]
-            h_pred_agg_ls = ["head_label", "score", "in_testing", "in_validation"]
         else:
             assert (
                 group == "test"
             ), "No validation set found, in `self.build_dataset_kwargs` please use test group"
             train, test = self.load_pykeen_triples()
-            t_pred_agg_ls = ["tail_label", "score", "in_testing"]
-            h_pred_agg_ls = ["head_label", "score", "in_testing"]
 
         # import test or valid triples depending on 'group'
         predict_path = (
@@ -216,14 +153,15 @@ class AnalysisHelper(object):
                     tail=disease,
                     relation=relation,
                     triples_factory=train,
-                ).add_membership_columns(
-                    testing=test,
-                    validation=(
-                        valid
-                        if self.build_dataset_kwargs.get("split_ttv", 0) != 0
-                        else None
-                    ),
-                )  # check if tail predictions are in 'predict_triple' (correct answer)
+                )
+                # .add_membership_columns(
+                #     testing=test,
+                #     validation=(
+                #         valid
+                #         if self.build_dataset_kwargs.get("split_ttv", 0) != 0
+                #         else None
+                #     ),
+                # )  # check if tail predictions are in 'predict_triple' (correct answer)
                 pred = pl.DataFrame(pred.df)
                 pred = pred.with_columns(t=pl.lit(disease))
                 h_res_ls.append(pred)
@@ -237,14 +175,15 @@ class AnalysisHelper(object):
                     head=compound,
                     relation=relation,
                     triples_factory=train,
-                ).add_membership_columns(
-                    testing=test,
-                    validation=(
-                        valid
-                        if self.build_dataset_kwargs.get("split_ttv", 0) != 0
-                        else None
-                    ),
-                )  # check if tail predictions are in 'predict_triple' (correct answer)
+                )
+                # .add_membership_columns(
+                #     testing=test,
+                #     validation=(
+                #         valid
+                #         if self.build_dataset_kwargs.get("split_ttv", 0) != 0
+                #         else None
+                #     ),
+                # )  # check if tail predictions are in 'predict_triple' (correct answer)
                 pred = pl.DataFrame(pred.df)
                 pred = pred.with_columns(h=pl.lit(compound))
                 t_res_ls.append(pred)
@@ -257,7 +196,11 @@ class AnalysisHelper(object):
                 .rename({"t": "query_label", "head_label": "answer_label"})
                 .drop("head_id")
                 .group_by(["query_label", "query"], maintain_order=True)
-                .agg(["answer_label", "in_testing", "in_validation"])
+                .agg(
+                    [
+                        "answer_label",
+                    ]
+                )
             )
 
             self.df = df_h
@@ -269,7 +212,11 @@ class AnalysisHelper(object):
                 .rename({"h": "query_label", "tail_label": "answer_label"})
                 .drop("tail_id")
                 .group_by(["query_label", "query"], maintain_order=True)
-                .agg(["answer_label", "in_testing", "in_validation"])
+                .agg(
+                    [
+                        "answer_label",
+                    ]
+                )
             )
 
             self.df = df_t
@@ -289,7 +236,131 @@ class AnalysisHelper(object):
             df = (
                 pl.concat([df_h, df_t])
                 .group_by(["query_label", "query"], maintain_order=True)
-                .agg(["answer_label", "in_testing", "in_validation"])
+                .agg(
+                    [
+                        "answer_label",
+                    ]
+                )
+            )
+            self.df = df
+            return df
+
+    def get_answers(self) -> pl.DataFrame:
+        """
+        calculate a n-hot encoded list for the answers of a given query
+        """
+        df = self.df
+        # expand dataframe and separate by query for head or query for tail
+        df = df.explode(["answer_label"])
+
+        # get answers dataframe depending on self.
+        if self.build_dataset_kwargs.get("split_ttv", 0) != 0:
+            # swap test and valid if models_swap is True
+            if self.train_models_swap:
+                test_answers = pl.read_csv(
+                    self.valid_dir, separator="\t", new_columns=["h", "r", "t"]
+                )
+                valid_answers = pl.read_csv(
+                    self.test_dir, separator="\t", new_columns=["h", "r", "t"]
+                )
+            else:
+                test_answers = pl.read_csv(
+                    self.test_dir, separator="\t", new_columns=["h", "r", "t"]
+                )
+                valid_answers = pl.read_csv(
+                    self.valid_dir, separator="\t", new_columns=["h", "r", "t"]
+                )
+        else:
+            test_answers = pl.read_csv(
+                self.test_dir, separator="\t", new_columns=["h", "r", "t"]
+            )
+
+        # get answers for head and tail by merging with test_answers/valid_answers
+        if self.query_answer == "head" or self.query_answer == "both":
+            df_h = df.filter(pl.col("query") == "head")
+            df_h = (
+                df_h.join(
+                    test_answers,
+                    left_on=["query_label", "answer_label"],
+                    right_on=["t", "h"],
+                    how="left",
+                )
+                .with_columns(
+                    pl.when(pl.col("r").is_null())
+                    .then(0)
+                    .otherwise(1)
+                    .alias("in_testing")
+                )
+                .drop("r")
+            )
+            if self.valid_dir != None:
+                # add validation column
+                df_h = (
+                    df_h.join(
+                        valid_answers,
+                        left_on=["query_label", "answer_label"],
+                        right_on=["t", "h"],
+                        how="left",
+                    )
+                    .with_columns(
+                        pl.when(pl.col("r").is_null())
+                        .then(0)
+                        .otherwise(1)
+                        .alias("in_validation")
+                    )
+                    .drop("r")
+                )
+
+        if self.query_answer == "tail" or self.query_answer == "both":
+            df_t = df.filter(pl.col("query") == "tail")
+            df_t = (
+                df_t.join(
+                    test_answers,
+                    left_on=["query_label", "answer_label"],
+                    right_on=["h", "t"],
+                    how="left",
+                )
+                .with_columns(
+                    pl.when(pl.col("r").is_null())
+                    .then(0)
+                    .otherwise(1)
+                    .alias("in_testing")
+                )
+                .drop("r")
+            )
+            if self.valid_dir != None:
+                # add validation column
+                df_t = (
+                    df_t.join(
+                        valid_answers,
+                        left_on=["query_label", "answer_label"],
+                        right_on=["h", "t"],
+                        how="left",
+                    )
+                    .with_columns(
+                        pl.when(pl.col("r").is_null())
+                        .then(0)
+                        .otherwise(1)
+                        .alias("in_validation")
+                    )
+                    .drop("r")
+                )
+        if self.query_answer == "head":
+            df_h = df_h.group_by(["query_label", "query"], maintain_order=True).agg(
+                ["answer_label", "in_testing", "in_validation"]
+            )
+            self.df = df_h
+            return df_h
+        elif self.query_answer == "tail":
+            df_t = df_t.group_by(["query_label", "query"], maintain_order=True).agg(
+                ["answer_label", "in_testing", "in_validation"]
+            )
+            self.df = df_t
+            return df_t
+        else:
+            df = pl.concat([df_h, df_t])
+            df = df.group_by(["query_label", "query"], maintain_order=True).agg(
+                ["answer_label", "in_testing", "in_validation"]
             )
             self.df = df
             return df
@@ -302,7 +373,7 @@ class AnalysisHelper(object):
         Example
         ------------
         hits_list = [0,1,1,0,1,0,0,1]
-        get_rank_from_position(hits_list) -> [2,2,4,7]
+        get_rank_from_position(hits_list) -> [2,2,3,5]
         """
         a = np.array(x)
         a = np.where(a == 1)
@@ -314,7 +385,7 @@ class AnalysisHelper(object):
     @staticmethod
     def get_true_index(x: List[int]) -> np.array:
         """
-        Gets the position of all hits and returns as as an array.
+        Gets the index of all hits and returns as as an array.
 
         Example
         ------------
@@ -334,7 +405,8 @@ class AnalysisHelper(object):
         assert (
             type(self.df) == pl.DataFrame
         ), "No dataframe found, please run self.predict_on() first"
-        results_df = self.df
+
+        results_df = self.get_answers()
         df = results_df.unique(["query_label", "query"])
 
         res_col = "in_testing" if self.group == "test" else "in_validation"
@@ -374,7 +446,7 @@ class AnalysisHelper(object):
 
     def get_hits_at_k(self, k: int = 10) -> float:
         """
-        Given a pykeen returned dataframe, get the hits at k from known ranks
+        Given a pykeen returned dataframe, get the hits at k from known trues
         * default k value is 10
         """
         assert (
@@ -460,8 +532,13 @@ class AnalysisHelper(object):
             )
 
         if self.query_answer == "head":
+            self.answers_df = results_df_head
             return results_df_head
+
         elif self.query_answer == "tail":
+            self.answers_df = results_df_tail
             return results_df_tail
         else:
-            return pl.concat([results_df_head, results_df_tail])
+            a_df = pl.concat([results_df_head, results_df_tail])
+            self.answers_df = a_df
+            return a_df

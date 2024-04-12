@@ -16,21 +16,27 @@ class TimeDrugRepo(object):
 
     Parameters
     ----------
-    :param: data_dir (str):    The path to the time-resolved dataset folder. Ex. "../data/time_networks-6_metanode/"
-    :param: models_to_run (int):    The number of models to train. Ex. "models_to_run = 4" will pick the four years with the most indications
-    :param: train_models (bool):    Whether to train models on the recommended year dataset. If you supply pykeen kwargs for `pykeen.pipeline.pipeline`, True will train the recommended year models, Otherwise it will fail
+    :param: data_dir (str):             The path to the time-resolved dataset folder. Ex. "../data/time_networks-6_metanode/"
+    :param: models_to_run (int):        The number of models to train. Ex. "models_to_run = 4" will pick the four years with the most indications
+    :param: strategy (str):             The strategy to pick the years to train on. Options are "max_valid" or "max_test_valid". "max_valid" will pick the years to maximize unique valid indications, "max_test_valid" will pick the years to maximize unique test+valid indications
+    :param: train_models (bool):        Whether to train models on the recommended year dataset. If you supply pykeen kwargs for `pykeen.pipeline.pipeline`, True will train the recommended year models, Otherwise it will fail
+    :param: train_models_swap (bool):   Whether to train models on the recommended year dataset with the test and validation sets swapped.
+    :param: steps (int):                The number of triples in the 1987 dataset. Use this normalize batch size to dataset size when running training loops
+    :param: build_dataset_kwargs (dict):kwargs to pass to `pykeen.datasets.timeresolvedkg.TimeResolvedKG` to build the dataset. Ex. {"split_ttv": True, "include_time": True}
 
     Properties
     ----------
-    self.recommended_years ([int]):    List of years to run
-    self.recommneded_ind_counts (int):    total number of indications to evaluate
-    self.recommended_df (pl.DataFrame):     group-by dataframe by years with specific drug-dis indications
+    recommended_years ([int]):     List of years to run
+    recommneded_counts (int):      total number of indications to evaluate
+    recommended_valid_df (pl.DataFrame): validation dataframe by years with specific drug-dis indications
+    recommended_test_df (pl.DataFrame): test dataframe by years with specific drug-dis indications
     """
 
     def __init__(
         self,
         data_dir: str = "../data/time_networks-6_metanode/",
         models_to_run: int = 5,
+        strategy: str = "max_valid",
         train_models: bool = False,
         train_models_swap: bool = False,
         steps: int = 1511121,  #  the number of triples in the 1987 dataset. Use this normalize batch size to dataset size
@@ -45,15 +51,16 @@ class TimeDrugRepo(object):
         ]
 
         self.models_to_run = models_to_run
+        self.strategy = strategy
         self.train_models = train_models
         self.train_models_swap = train_models_swap
         self.steps = steps
         self.build_dataset_kwargs = build_dataset_kwargs
-        # self.train, self.test, self.ind = self.import_df()
-        # self.node_time_dictionary = self.create_node_time_dict()
 
         self.recommended_years = self.recommend()
-        self.recommended_df = self.recommend_compound_disease_pair()
+        self.recommended_valid_df, self.recommended_test_df = (
+            self.recommend_compound_disease_pair()
+        )
         self.recommended_counts = self.recommended_indication_counts()
 
         if self.train_models:
@@ -149,7 +156,7 @@ class TimeDrugRepo(object):
 
         return df
 
-    def get_all_indications_df(self) -> pl.DataFrame:
+    def get_all_indications_df(self, filename: str) -> pl.DataFrame:
         """
         Iterates through all years in the dataset and returns a dataframe with all indications
         """
@@ -157,18 +164,33 @@ class TimeDrugRepo(object):
         all_indications = list()
 
         for year in years[:-3]:
-            df = self.read_df(year=year, filename="valid")
+            df = self.read_df(year=year, filename=filename)
             df = df.with_columns(ds_year=pl.lit(year))
             all_indications.append(df)
 
         all_indications_df = pl.concat(all_indications)
         return all_indications_df
 
+    def get_all_valid_indications_df(self) -> pl.DataFrame:
+        """
+        Iterates through all years in the dataset and returns a dataframe with all valid indications
+        """
+        return self.get_all_indications_df(filename="valid")
+
+    def get_all_test_indications_df(self) -> pl.DataFrame:
+        """
+        Iterates through all years in the dataseta and returns a dataframe with all test indications
+        """
+        return self.get_all_indications_df(filename="test")
+
     def recommend(self) -> Tuple[List[int], int, pl.DataFrame]:
         """
         Recommend the subset of years to train on based on `self.models_to_run`
         """
+        self.valid_ind_df = self.get_all_valid_indications_df()
+        self.test_ind_df = self.get_all_test_indications_df()
         self.ind_counts_df = self.get_indication_counts_df()
+
         ind_counts_df = self.ind_counts_df
 
         ind_counts_df = ind_counts_df.with_columns(
@@ -178,22 +200,58 @@ class TimeDrugRepo(object):
         recommended_years = list()
         recommended_years.append(ind_counts_df["year"].gather(0).item())
 
-        self.all_inds_df = self.get_all_indications_df()
         while len(recommended_years) < self.models_to_run:
             # get already recommended year triples to maximize the ones that haven't been recommended
-            already_recommended = self.all_inds_df.filter(
+            already_recommended_valid_triples = self.valid_ind_df.filter(
                 pl.col("ds_year").is_in(recommended_years)
             )
-            # get the year with the most indications, sans the ones already recommended
-            rec_year = (
-                self.all_inds_df.join(already_recommended, on=["h", "t"], how="left")
+
+            # get the year with the most test+valid indications, sans the ones already recommended
+
+            valid_df_sans_recommended = (
+                self.valid_ind_df.join(
+                    already_recommended_valid_triples, on=["h", "t"], how="left"
+                )
                 .filter(pl.col("r_right").is_null())
                 .group_by("ds_year")
                 .agg(pl.count("h").alias("count"))
-                .sort("count", descending=True)["ds_year"]
-                .gather(0)
-                .item()
+                .sort("count", descending=True)
             )
+            if self.strategy == "max_test_valid":
+                # get already recommended test year triple
+                already_recommended_test_triples = self.test_ind_df.filter(
+                    pl.col("ds_year").is_in(recommended_years)
+                )
+                test_df_sans_recommended = (
+                    self.test_ind_df.join(
+                        already_recommended_test_triples, on=["h", "t"], how="left"
+                    )
+                    .filter(pl.col("r_right").is_null())
+                    .group_by("ds_year")
+                    .agg(pl.count("h").alias("count"))
+                )
+
+                # get the year with the most test+valid indications, sans the ones already recommended
+                combined_df_sans_recommended = (
+                    valid_df_sans_recommended.join(
+                        test_df_sans_recommended, on=["ds_year"], how="outer"
+                    )
+                    .with_columns(
+                        pl.col("count").fill_null(strategy="zero"),
+                        pl.col("count_right").fill_null(strategy="zero"),
+                    )
+                    .with_columns(
+                        (pl.col("count") + pl.col("count_right")).alias(
+                            "combined_count"
+                        )
+                    )
+                    .sort("combined_count", descending=True)
+                )
+
+                rec_year = combined_df_sans_recommended["ds_year"].gather(0).item()
+
+            else:
+                rec_year = valid_df_sans_recommended["ds_year"].gather(0).item()
 
             recommended_years.append(rec_year)
 
@@ -204,11 +262,17 @@ class TimeDrugRepo(object):
         Takes a recommended list of years and returns a dataframe of the compound-disease pairs for each year.
         Can use this to check if the recommendations are IID.
         """
-        all_inds_df = self.all_inds_df
-        recommended_cd_pairs = all_inds_df.filter(
+        valid_inds_df = self.valid_ind_df.filter(
             pl.col("ds_year").is_in(self.recommended_years)
         )
-        return recommended_cd_pairs
+        if self.strategy == "max_test_valid":
+            test_inds_df = self.test_ind_df.filter(
+                pl.col("ds_year").is_in(self.recommended_years)
+            )
+        else:
+            test_inds_df = None
+
+        return valid_inds_df, test_inds_df
 
     def recommended_indication_counts(self) -> pl.DataFrame:
         """

@@ -1,6 +1,7 @@
 import os
-import pickle
+import pathlib
 from collections import ChainMap
+from typing import List, Optional, Tuple
 
 import polars as pl
 import pykeen
@@ -37,18 +38,23 @@ class TimeDrugRepo(object):
         **kwargs,
     ):
         self.data_dir = data_dir
+        self.years = [  # automatically should throw an error if an item in the directory cannot be converted to an integer
+            int(i)
+            for i in os.listdir(self.data_dir)
+            if os.path.isdir(os.path.join(self.data_dir, i))
+        ]
+
         self.models_to_run = models_to_run
         self.train_models = train_models
         self.train_models_swap = train_models_swap
         self.steps = steps
         self.build_dataset_kwargs = build_dataset_kwargs
-        self.train, self.test, self.ind = self.import_df()
-        self.node_time_dictionary = self.create_node_time_dict()
-        (
-            self.recommended_years,
-            self.recommended_ind_counts,
-            self.recommended_df,
-        ) = self.recommend()
+        # self.train, self.test, self.ind = self.import_df()
+        # self.node_time_dictionary = self.create_node_time_dict()
+
+        self.recommended_years = self.recommend()
+        self.recommended_df = self.recommend_compound_disease_pair()
+        self.recommended_counts = self.recommended_indication_counts()
 
         if self.train_models:
             self.run_model(**kwargs)
@@ -56,187 +62,160 @@ class TimeDrugRepo(object):
         if self.train_models_swap:
             self.run_model_swap_test_valid(**kwargs)
 
-    def import_df(self) -> pl.DataFrame:
+    def read_df(self, year: int, filename: str) -> pl.DataFrame:
         """
-        import and build your train/test/indication data
-        ----------
-        :param: dir :    string pointing directory holding all time folders
+        Get a dataframe for a given year and name
         """
-        # directories
-        dir = self.data_dir
+        assert filename in [
+            "train",
+            "test",
+            "valid",
+        ], "filename must be either 'train', 'test', or 'valid'"
+
+        file_dir = pathlib.Path(self.data_dir)
+        # parameters for file string
+        ttv = (
+            "_ttv" if self.build_dataset_kwargs.get("split_ttv", False) != False else ""
+        )
         time = (
-            "time" if self.build_dataset_kwargs.get("include_time", False) else "notime"
+            "_time"
+            if self.build_dataset_kwargs.get("include_time", False) != False
+            else "_notime"
         )
-        headers = ["h", "r", "t", "year"] if time == "time" else ["h", "r", "t"]
-        file_dir = os.path.join(dir, "2023")
-        train_dir = os.path.join(file_dir, f"train_{time}.txt")
-        ind_dir = os.path.join(file_dir, "indications.parquet")
+        headers = ["h", "r", "t", "year"] if time == "_time" else ["h", "r", "t"]
 
-        # import train
-        train = pl.read_csv(
-            source=train_dir,
-            has_header=False,
-            new_columns=headers,
-            separator="\t",
-        )
+        # new file path
+        new_file_dir = pathlib.Path(file_dir, str(year), f"{filename}{ttv}{time}.txt")
+        df = pl.read_csv(new_file_dir, separator="\t", new_columns=headers)
+        return df
 
-        # import ind
-        ind = pl.read_parquet(source=ind_dir)
-        ind = ind.with_columns(
-            pl.col("approval_year").str.split("-").list.first().alias("year")
-        ).drop_nulls()  # get indication year
+    def get_indication_count(self, year: int) -> Tuple[int, int, Optional[int]]:
+        """Query train, test, and validation indication counts for a given year"""
 
-        # import test
-        test_imports = [
-            pl.read_csv(
-                source=os.path.join(dir, i, f"test_{time}.txt"),
-                new_columns=headers,
-                separator="\t",
-                raise_if_empty=False,
-            )
-            for i in os.listdir(dir)
-            if os.path.isdir(os.path.join(dir, i)) & (i not in ["2022", "2023"])
-        ]  # import all tests into a list. Don't import 22' and 23' because tests are empty
-
-        test = pl.concat(
-            test_imports
-        ).unique()  # concatenate all tests and remove duplicates
-
-        if time == "notime":
-            # get date for train and test
-
-            train = get_time(train, file_dir).drop_nulls()
-            test = get_time(test, file_dir).drop_nulls()
-
-        return train, test, ind
-
-    def create_node_time_dict(self) -> dict:
-        """
-        builds node-time dictionary
-        ----------
-        :param: train :    train file to solicit identifier to year links
-        """
-        train, test, ind = self.train, self.test, self.ind
-
-        # combine train and test nodes together and get the min year of each node
-
-        node_time = (
-            pl.concat(
-                [
-                    train.select(["h", "year"]),
-                    train.select(["t", "year"]).rename({"t": "h"}),
-                    test.select(["h", "year"]),
-                    test.select(["t", "year"]).rename({"t": "h"}),
-                ]
-            )
+        train_count = (
+            self.read_df(year=year, filename="train")
+            .filter(pl.col("r") == "INDICATION_CDiDO")
             .unique()
-            .group_by("h")
-            .agg("year")
-            .with_columns(
-                pl.col("year").list.sort(descending=False),
-                pl.col("year").list.min().alias("min_year"),
-            )  # group by nodes to get [time] sorted from low to high (1950->2023)
-            .drop_nulls()
+            .shape[0]
         )
 
-        # construct dictionary
-        node_time_dict = dict(
-            zip(node_time["h"], [str(i) for i in node_time["min_year"]])
+        test_count = (
+            self.read_df(year=year, filename="test")
+            .filter(pl.col("r") == "INDICATION_CDiDO")
+            .unique()
+            .shape[0]
         )
 
-        return node_time_dict
+        if self.build_dataset_kwargs.get("split_ttv", False) != False:
+            valid_count = (
+                self.read_df(year=year, filename="valid")
+                .filter(pl.col("r") == "INDICATION_CDiDO")
+                .unique()
+                .shape[0]
+            )
 
-    def recommend(self) -> tuple:
+            return train_count, test_count, valid_count
+
+        else:
+            return train_count, test_count
+
+    def get_indication_counts_df(self) -> pl.DataFrame:
         """
-        Recommend the model years to train on based on specified model counts
-        ----------
-        :param: train :    training file from self
-        :param: test :    testing file from self
-        :param: ind :    indication file from self
-        :param: combo_ct :    numberumber of models to train from self
+        Generates a dataframe with the train, test, valid indication counts for each year in the dataset
         """
-        train, test, ind = self.train, self.test, self.ind
-        node_time_dict = self.node_time_dictionary
-        combo_ct = self.models_to_run
+        years = self.years
 
-        # create new indications file
-        ind2 = ind[["compound_semmed_id", "disease_semmed_id", "year"]].filter(
-            pl.col("compound_semmed_id").is_in(node_time_dict.keys()),
-            pl.col("disease_semmed_id").is_in(node_time_dict.keys()),
+        train_counts, test_counts, valid_counts = list(), list(), list()
+        # don't include 2022 and 2023 for years
+        for year in years[:-3]:
+            if self.build_dataset_kwargs.get("split_ttv", False) != False:
+                train, test, valid = self.get_indication_count(year)
+                valid_counts.append(valid)
+            else:
+                train, test = self.get_indication_count(year)
+
+            train_counts.append(train)
+            test_counts.append(test)
+
+        # create dataframe of indication counts
+        df = pl.DataFrame(
+            {
+                "year": years[:-3],
+                "train_indications": train_counts,
+                "test_indications": test_counts,
+                "valid_indications": valid_counts,
+            }
         )
 
-        ind2 = (
-            ind2.with_columns(  # create two new columns based on entity->yr mapping
-                pl.col("compound_semmed_id")
-                .replace(node_time_dict)
-                .alias("comp_year")
-                .str.to_integer(),
-                pl.col("disease_semmed_id")
-                .replace(node_time_dict)
-                .alias("dis_year")
-                .str.to_integer(),
-            )
-            .with_columns(  # create column that picks the younger from columns comp year & dis year
-                younger_year=(
-                    pl.when(pl.col("comp_year") >= pl.col("dis_year"))
-                    .then(pl.col("comp_year"))
-                    .otherwise(pl.col("dis_year"))
-                )
-            )
-            .with_columns(  # create column that takes the difference between approval year and appearance of entity in KG
-                approval_younger_year_diff=(
-                    pl.col("year").cast(pl.Int64)
-                    - pl.col("younger_year").cast(pl.Int64)
-                ),
-            )
-        )
-        # create a filtered group_by dataframe to get total indications associated with years
-        indcounts = (
-            ind2.filter(
-                pl.col("compound_semmed_id").is_in(
-                    test["h"]
-                ),  # make sure its in the test set
-                pl.col("disease_semmed_id").is_in(
-                    test["t"]
-                ),  # make sure its in the test set
-                pl.col("approval_younger_year_diff")
-                > 0,  # predict the future, not the current
-                pl.col("year").cast(pl.Int64) > 1950,  # dataset lower bound
-                pl.col("younger_year").cast(pl.Int64) >= 1950,  # dataset lower bound
-            )
-            .group_by("younger_year")
-            .agg(
-                ["year", "compound_semmed_id", "disease_semmed_id"]
-            )  # column lists to return
-            .with_columns(pl.col("year").list.len().alias("counts"))  # ind counts/yr
-            .sort(by="counts", descending=True)
-        )
+        return df
 
-        # results
-        picked_years = indcounts["younger_year"][0:combo_ct].to_list()
-        totals = indcounts["counts"][0:combo_ct].sum()
+    def get_all_indications_df(self) -> pl.DataFrame:
+        """
+        Iterates through all years in the dataset and returns a dataframe with all indications
+        """
+        years = self.years
+        all_indications = list()
 
-        return picked_years, totals, indcounts
+        for year in years[:-3]:
+            df = self.read_df(year=year, filename="valid")
+            df = df.with_columns(ds_year=pl.lit(year))
+            all_indications.append(df)
+
+        all_indications_df = pl.concat(all_indications)
+        return all_indications_df
+
+    def recommend(self) -> Tuple[List[int], int, pl.DataFrame]:
+        """
+        Recommend the subset of years to train on based on `self.models_to_run`
+        """
+        self.ind_counts_df = self.get_indication_counts_df()
+        ind_counts_df = self.ind_counts_df
+
+        ind_counts_df = ind_counts_df.with_columns(
+            test_valid=pl.col("test_indications") + pl.col("valid_indications")
+        ).sort("test_valid", descending=True)
+
+        recommended_years = list()
+        recommended_years.append(ind_counts_df["year"].gather(0).item())
+
+        self.all_inds_df = self.get_all_indications_df()
+        while len(recommended_years) < self.models_to_run:
+            # get already recommended year triples to maximize the ones that haven't been recommended
+            already_recommended = self.all_inds_df.filter(
+                pl.col("ds_year").is_in(recommended_years)
+            )
+            # get the year with the most indications, sans the ones already recommended
+            rec_year = (
+                self.all_inds_df.join(already_recommended, on=["h", "t"], how="left")
+                .filter(pl.col("r_right").is_null())
+                .group_by("ds_year")
+                .agg(pl.count("h").alias("count"))
+                .sort("count", descending=True)["ds_year"]
+                .gather(0)
+                .item()
+            )
+
+            recommended_years.append(rec_year)
+
+        return recommended_years
 
     def recommend_compound_disease_pair(self) -> pl.DataFrame:
         """
-        Takes a recommended dataframe and returns the compound-disease pairs for each year.
+        Takes a recommended list of years and returns a dataframe of the compound-disease pairs for each year.
         Can use this to check if the recommendations are IID.
         """
-        df = (
-            self.recommended_df.explode(
-                ["year", "compound_semmed_id", "disease_semmed_id"]
-            )
-            .with_columns(
-                comp_dis_id=pl.col("compound_semmed_id")
-                + "-"
-                + pl.col("disease_semmed_id")
-            )
-            .group_by(["younger_year", "counts"])
-            .agg(["comp_dis_id", "year"])
-            .sort("counts", descending=True)
+        all_inds_df = self.all_inds_df
+        recommended_cd_pairs = all_inds_df.filter(
+            pl.col("ds_year").is_in(self.recommended_years)
         )
-        return df
+        return recommended_cd_pairs
+
+    def recommended_indication_counts(self) -> pl.DataFrame:
+        """
+        Returns a dataframe of the recommended years and their indication counts
+        """
+
+        return self.ind_counts_df.filter(pl.col("year").is_in(self.recommended_years))
 
     def run_model(self, **kwargs):
         """

@@ -64,10 +64,12 @@ class TimeDrugRepo(object):
         self.recommended_counts = self.recommended_indication_counts()
 
         if self.train_models:
+            self.use_testing_data = True
             self.run_model(**kwargs)
 
-        if self.train_models_swap:
-            self.run_model_swap_test_valid(**kwargs)
+        elif self.train_models_swap:
+            self.use_testing_data = False
+            self.run_model(**kwargs)
 
     def read_df(self, year: int, filename: str) -> pl.DataFrame:
         """
@@ -315,40 +317,39 @@ class TimeDrugRepo(object):
 
             res = pipeline(
                 dataset=dataset,
-                # training=os.path.join(self.data_dir, str(year), "train_notime.txt"),
-                # testing=os.path.join(self.data_dir, str(year), "test_notime.txt"),
+                use_testing_data=self.use_testing_data,
                 **new_kwargs,
             )
 
-    def run_model_swap_test_valid(self, **kwargs):
-        """
-        Wrapper function for pykeen.pipeline.pipeline that loops over all years in self.years_ls in the dataset
-        """
-        print(f"Running Models for the following years {self.recommended_years}")
-        for year in self.recommended_years:
-            # replace file name everytime you run the algorithm, so no collisions
-            year = str(year)
-            checkpoint_file_name = f"{kwargs['training_kwargs']['checkpoint_name'].split('.')[0]}_{year}.pt"
+            # def run_model_swap_test_valid(self, **kwargs):
+            #     """
+            #     Wrapper function for pykeen.pipeline.pipeline that loops over all years in self.years_ls in the dataset
+            #     """
+            #     print(f"Running Models for the following years {self.recommended_years}")
+            #     for year in self.recommended_years:
+            #         # replace file name everytime you run the algorithm, so no collisions
+            #         year = str(year)
+            #         checkpoint_file_name = f"{kwargs['training_kwargs']['checkpoint_name'].split('.')[0]}_{year}.pt"
 
-            # get training triples by loading them from trkg
-            dataset = trkg(build_dataset_kwargs=self.build_dataset_kwargs, year=year)
-            train_sz = dataset.training.num_triples
+            #         # get training triples by loading them from trkg
+            #         dataset = trkg(build_dataset_kwargs=self.build_dataset_kwargs, year=year)
+            #         train_sz = dataset.training.num_triples
 
-            batch_size = (
-                kwargs["training_kwargs"]["batch_size"] * train_sz
-            ) // self.steps
-            new_kwargs = ChainMap(
-                {
-                    "training_kwargs": ChainMap(
-                        {
-                            "checkpoint_name": checkpoint_file_name,
-                            "batch_size": batch_size,  # change num epochs with reference to batch sizes so all steps are the same
-                        },
-                        kwargs["training_kwargs"],
-                    )
-                },
-                kwargs,
-            )
+            #         batch_size = (
+            #             kwargs["training_kwargs"]["batch_size"] * train_sz
+            #         ) // self.steps
+            #         new_kwargs = ChainMap(
+            #             {
+            #                 "training_kwargs": ChainMap(
+            #                     {
+            #                         "checkpoint_name": checkpoint_file_name,
+            #                         "batch_size": batch_size,  # change num epochs with reference to batch sizes so all steps are the same
+            #                     },
+            #                     kwargs["training_kwargs"],
+            #                 )
+            #             },
+            #             kwargs,
+            #         )
 
             print(f"Checkpoint name: {checkpoint_file_name}")
 

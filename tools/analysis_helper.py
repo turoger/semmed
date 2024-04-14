@@ -375,12 +375,10 @@ class AnalysisHelper(object):
         hits_list = [0,1,1,0,1,0,0,1]
         get_rank_from_position(hits_list) -> [2,2,3,5]
         """
-        a = np.array(x)
-        a = np.where(a == 1)
-        a = a[0].tolist()
-        b = [v - i + 1 for i, v in enumerate(a)]
-
-        return b
+        # add 1 to all ranks
+        # subtract the number of true entities prior to the current entity
+        x = np.array(list(np.where(x == 1)[0]))
+        return (np.subtract(np.add(x, 1), np.array(list(np.where(x >= 0))[0]))).tolist()
 
     @staticmethod
     def get_true_index(x: List[int]) -> np.array:
@@ -392,8 +390,7 @@ class AnalysisHelper(object):
         hits_list = [0,1,1,0,1,0,0,1]
         get_true_index(hits_list) -> [1,2,4,7]
         """
-        a = np.array(x)
-        return np.where(a == 1)[0].tolist()
+        return list(np.where(x == 1)[0])
 
     def get_rank(
         self,
@@ -406,10 +403,13 @@ class AnalysisHelper(object):
             type(self.df) == pl.DataFrame
         ), "No dataframe found, please run self.predict_on() first"
 
-        results_df = self.get_answers()
-        df = results_df.unique(["query_label", "query"])
-
         res_col = "in_testing" if self.group == "test" else "in_validation"
+
+        if res_col not in self.df.columns:
+            results_df = self.get_answers()
+            df = results_df.unique(["query_label", "query"])
+        else:
+            df = self.df
 
         df = df.with_columns(
             pl.col(res_col)

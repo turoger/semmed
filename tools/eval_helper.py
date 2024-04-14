@@ -351,14 +351,14 @@ class TimeDrugRepo(object):
             #             kwargs,
             #         )
 
-            print(f"Checkpoint name: {checkpoint_file_name}")
+            #         print(f"Checkpoint name: {checkpoint_file_name}")
 
-            res = pipeline(
-                training=dataset.training_path,
-                testing=dataset.validation_path,
-                validation=dataset.testing_path,
-                **new_kwargs,
-            )
+            #         res = pipeline(
+            #             training=dataset.training_path,
+            #             testing=dataset.validation_path,
+            #             validation=dataset.testing_path,
+            #             **new_kwargs,
+            #         )
 
 
 def create_acronym_dict(edges: pl.DataFrame) -> dict:

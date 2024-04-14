@@ -119,7 +119,7 @@ class TimeResolvedKG(PathDataset):
             testing_path=testing_path,
             validation_path=validation_path,
             eager=True,
-            create_inverse_triples=False,
+            create_inverse_triples=True,
         )
 
     def _get_paths(self, relative_file_path) -> pathlib.Path:

@@ -1,3 +1,4 @@
+import math
 import pathlib
 from typing import (
     Any,
@@ -617,3 +618,199 @@ class AnalysisHelper(object):
         else:
             a_df = pl.concat([results_df_head, results_df_tail])
             return a_df
+
+
+class AnalysisPlotter(object):
+    """
+    Plotting class for PyKEEN time based visualization using rolling averages
+    :answer_df:       list of dataframes or single dataframe
+    :algo_name_ls:         list of algorithm names or single algorithm name
+    :window_size:     Window to calculate moving average. Each 'year' is the center of the window size, thus window_size should be an odd number
+    :measure:         column name to get rolling average of
+    :year_min:        any value mapped to a smaller year than `min year` gets mapped to the `min_year`
+    :year_max:        any value mapped to a larger year than `max_year` gets mapped to the `max_year`
+    :save_dir:        directory to save plot
+    """
+
+    def __init__(
+        self,
+        answer_df: Union[pl.DataFrame, List[pl.DataFrame]],
+        algo_name_ls: Union[str, List[str]],
+        window_size: Optional[int] = 5,
+        measure: Optional[str] = "answer_filt_rank",
+        year_min: Optional[int] = -20,
+        year_max: Optional[int] = 20,
+        save_dir: Optional[str] = None,
+    ) -> None:
+        self.answer_df = answer_df
+        self.algo_ls = algo_name_ls
+        self.window_size = window_size
+        self.measure = measure
+        self.year_min = year_min
+        self.year_max = year_max
+        self.save_dir = save_dir
+
+        # check if answer_df is a list of dataframes
+        if type(answer_df) == list:
+            assert len(answer_df) == len(
+                self.algo_ls
+            ), "Length of dataframes and algo names do not match."
+
+            self.rolling_avg_df = self.add_algo_label_to_concat_df(
+                [self.get_rolling_averages(df) for df in self.answer_df],
+                [algo for algo in self.algo_ls],
+            )
+
+            self.rolling_avg_df = self.melt_rolling_averages(self.rolling_avg_df)
+
+        else:
+            self.rolling_avg_df = self.get_rolling_averages(
+                self.answer_df, self.algo_ls
+            )
+            self.rolling_avg_df = self.melt_rolling_averages(self.rolling_avg_df)
+
+        self.rolling_avg_plot = self.plot_rolling_averages()
+
+    @staticmethod
+    def add_algo_label_to_concat_df(
+        df_ls: List[pl.DataFrame], algo_ls: List[str]
+    ) -> pl.DataFrame:
+        """
+        Takes a list of dataframes of n-length and a list of names of n-length and adds a column `algo` to each dataframe with the corresponding name
+        """
+
+        assert len(df_ls) == len(
+            algo_ls
+        ), f"Length of dataframes, {len(df_ls)}, and length of algo names, {len(algo_ls)}, do not match."
+
+        new_df_ls = list()
+        for i, df in enumerate(df_ls):
+            new_df_ls.append(df.with_columns((pl.lit(algo_ls[i])).alias("algo")))
+
+        df = pl.concat(new_df_ls)
+        return df
+
+    @staticmethod
+    def calculate_standard_error(
+        df,
+        col_name: str,
+    ):
+        """
+        calculate standard error of the mean for the samples in `col_name`
+        """
+        stderr = df[col_name].std() / math.sqrt(df[col_name].count())
+        return stderr
+
+    def get_rolling_averages(
+        self,
+        df: pl.DataFrame,
+        df_name: Optional[str] = None,
+    ):
+        """
+        Calculate the rolling average of a column in a dataframe based on the year_diff column
+
+        Parameters
+        ----------
+        :window_size:     Window to calculate moving average. Each 'year' is the center of the window size, thus window_size should be an odd number
+        :col_name:        column name to get rolling average of
+        :year_min:        any value mapped to a smaller year than `min year` gets mapped to the `min_year`
+        :year_max:        any value mapped to a larger year than `max_year` gets mapped to the `max_year`
+        :df_name:         name to add to the `algo` column
+        """
+        window_size = self.window_size
+        col_name = self.measure
+        year_min = self.year_min
+        year_max = self.year_max
+
+        # checks on parameters
+        assert (
+            window_size % 2 == 1 & window_size > 0
+        ), f"`window_size`, {window_size}, is not a positive and odd value."
+        assert (
+            year_min < year_max
+        ), f"`year_min`, {year_min}, should be less than `year_max`, {year_max}."
+
+        plus_minus_yr = window_size // 2
+
+        rolling_map = dict()
+        error_map = dict()
+        # query the dataframe and calculate the average value
+        for yr in range(year_min, year_max + 1):
+            # build year range
+            yr_range = range(yr - plus_minus_yr, yr + plus_minus_yr + 1)
+
+            if year_min in yr_range:
+                sub_df = df.filter(pl.col("year_diff") <= max(yr_range))
+            elif year_max in yr_range:
+                sub_df = df.filter(pl.col("year_diff") >= min(yr_range))
+            else:
+                sub_df = df.filter(pl.col("year_diff").is_in(yr_range))
+
+            rolling_map.update({yr: sub_df[col_name].mean()})
+            error_map.update({yr: self.calculate_standard_error(sub_df, col_name)})
+
+        new_df = pl.DataFrame(
+            {
+                "year": rolling_map.keys(),
+                f"average_{col_name}": rolling_map.values(),
+                f"stderr_{col_name}": error_map.values(),
+            }
+        )
+
+        # adds dataframe name to the given column
+        if df_name != None:
+            new_df = new_df.with_columns(pl.lit(df_name).alias("algo"))
+
+        return new_df
+
+    def melt_rolling_averages(self, df: pl.DataFrame) -> pl.DataFrame:
+        """
+        add dataframe error to the mean value and melt the dataframe so when plotting we get nice error lines
+        """
+        col_name = self.measure
+
+        df = df.with_columns(
+            lower=pl.col(f"average_{col_name}") - pl.col(f"stderr_{col_name}"),
+            higher=pl.col(f"average_{col_name}") + pl.col(f"stderr_{col_name}"),
+        ).melt(id_vars=["year", "algo"], value_vars=["lower", "higher"])
+
+        return df
+
+    def plot_rolling_averages(self, **kwargs):
+        """
+        Plot the rolling averages of the dataframe
+        """
+        # get title
+        algo_ls = self.algo_ls
+        title_name = self.measure
+        title_name = title_name.split("_")
+        title_name = [word.capitalize() for word in title_name]
+        title_name2 = " ".join(title_name)
+
+        fig, ax = plt.subplots(figsize=(10, 6))
+
+        sns.lineplot(
+            data=self.rolling_avg_df,
+            x="year",
+            y="value",
+            hue="algo",
+            ax=ax,
+            marker="o",
+            markersize=5,
+            **kwargs,
+        )
+
+        ax.set(
+            xlabel="Relative Year Difference",
+            ylabel=f"Average {title_name2}",
+            title=f"{title_name2} {self.window_size} Year Rolling Average",
+        )
+        ax.spines[["top", "right"]].set_visible(False)
+        plt.legend(title="Algorithm", loc="upper left", frameon=False)
+
+        if self.save_dir != None:
+            algo_name = '_'.join(algo_ls) if type(algo_ls)==list else algo_ls
+            save_path = pathlib.Path(self.save_dir).joinpath(f'{self.window_size}_rolling_avg_{'_'.join(title_name)}_{algo_name}_plot.png')
+            plt.savefig(save_path, dpi=300, bbox_inches="tight")
+
+        plt.show()

@@ -14,7 +14,7 @@ from typing import (
     Union,
     cast,
 )
-
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -787,7 +787,9 @@ class AnalysisPlotter(object):
         title_name = [word.capitalize() for word in title_name]
         title_name2 = " ".join(title_name)
 
-        fig, ax = plt.subplots(figsize=(10, 6))
+        matplotlib.rcParams['font.size']=12
+
+        fig, ax = plt.subplots(figsize=(6, 4))
 
         sns.lineplot(
             data=self.rolling_avg_df,
@@ -800,13 +802,16 @@ class AnalysisPlotter(object):
             **kwargs,
         )
 
-        ax.set(
-            xlabel="Relative Year Difference",
-            ylabel=f"Average {title_name2}",
-            title=f"{title_name2} {self.window_size} Year Rolling Average",
-        )
+        ax.set_xlabel("Relative Year Difference",fontsize=14)
+        ax.set_ylabel(f"Average {title_name2}",fontsize=14)
+
+        # ax.set(
+        #     xlabel="Relative Year Difference",
+        #     ylabel=f"Average {title_name2}",
+        #     title=f"{title_name2} {self.window_size} Year Rolling Average",
+        # )
         ax.spines[["top", "right"]].set_visible(False)
-        plt.legend(title="Algorithm", loc="upper left", frameon=False)
+        plt.legend(title="Algorithm", loc="best", frameon=False)
 
         if self.save_dir != None:
             algo_name = '_'.join(algo_ls) if type(algo_ls)==list else algo_ls

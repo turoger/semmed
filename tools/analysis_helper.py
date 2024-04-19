@@ -143,6 +143,7 @@ class AnalysisHelper(object):
                 self.extract_relative_year()
             )  # returns year for rexpanded list of only answers
 
+            self.mr = self.get_mr()
             self.mrr = self.get_mrr()
             self.hits_1 = self.get_hits_at_k(k=1)
             self.hits_3 = self.get_hits_at_k(k=3)
@@ -500,6 +501,21 @@ class AnalysisHelper(object):
 
         return df
 
+    def get_mr(self)->float:
+        """
+        Given a pykeen returned dataframe, get the MR from known ranks
+        """
+        assert(
+            type(self.df) == pl.DataFrame
+        ), "No dataframe found, please run `self.predict_on()` first"
+        results_df = self.df
+        if "answer_filt_rank" not in results_df.columns:
+            results_df = self.get_rank()
+
+        results_df = results_df.explode('answer_filt_rank')
+        mr = results_df["answer_filt_rank"].mean()
+        return mr
+
     def get_mrr(
         self,
     ) -> float:
@@ -508,7 +524,7 @@ class AnalysisHelper(object):
         """
         assert (
             type(self.df) == pl.DataFrame
-        ), "No dataframe found, please run self.predict_on() first"
+        ), "No dataframe found, please run `self.predict_on()` first"
 
         results_df = self.df
 
@@ -520,8 +536,6 @@ class AnalysisHelper(object):
         ]  # np.reciprocal requires floats, using ints leads to unexpected behavior
         all_rr = np.reciprocal(all_ranks)
         mrr = np.mean(all_rr)
-
-        self.mrr = mrr
 
         return mrr
 
@@ -746,8 +760,9 @@ class AnalysisPlotter(object):
             else:
                 sub_df = df.filter(pl.col("year_diff").is_in(yr_range))
 
-            rolling_map.update({yr: sub_df[col_name].mean()})
-            error_map.update({yr: self.calculate_standard_error(sub_df, col_name)})
+            if sub_df[col_name].count() > 0:
+                rolling_map.update({yr: sub_df[col_name].mean()})
+                error_map.update({yr: self.calculate_standard_error(sub_df, col_name)})
 
         new_df = pl.DataFrame(
             {
@@ -803,7 +818,7 @@ class AnalysisPlotter(object):
         )
 
         ax.set_xlabel("Relative Year Difference",fontsize=14)
-        ax.set_ylabel(f"Average {title_name2}",fontsize=14)
+        ax.set_ylabel(f"{self.window_size} Year Rolling Average - {title_name2}",fontsize=14)
 
         # ax.set(
         #     xlabel="Relative Year Difference",
@@ -811,11 +826,11 @@ class AnalysisPlotter(object):
         #     title=f"{title_name2} {self.window_size} Year Rolling Average",
         # )
         ax.spines[["top", "right"]].set_visible(False)
-        plt.legend(title="Algorithm", loc="best", frameon=False)
+        plt.legend(loc="best", frameon=False)
 
         if self.save_dir != None:
             algo_name = '_'.join(algo_ls) if type(algo_ls)==list else algo_ls
             save_path = pathlib.Path(self.save_dir).joinpath(f'{self.window_size}_rolling_avg_{'_'.join(title_name)}_{algo_name}_plot.png')
             plt.savefig(save_path, dpi=300, bbox_inches="tight")
 
-        plt.show()
+        return fig,ax

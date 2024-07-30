@@ -39,13 +39,13 @@ When building, it is highly recommended to run the command in a persistent sessi
 The `timeresolvedkg.py` file is a pykeen dataset class that will run the entire pipeline (if you supply the minimum flagged information) after adding the file path to the `setup.cfg` and rebuilding the pykeen library with `pip install .`. 
 
 # Installation
-In order to use the repository scripts manually, a python environment should be setup and activated. The previous script automates the construction of a conda environment to run the independent scripts. 
+In order to use the repository scripts manually, a python environment should be setup and activated. The previous script automates the construction of a conda/mamba environment to run the independent scripts. 
 
 ## Setting up the python environment.
 
-Use anaconda or mamba with environment.yml to run this code. A minimum environment can be created using the `mini_env.yml` file.
+Use anaconda or mamba (preferred) with environment.yml to run this code. A minimum environment can be created using the `mini_env.yml` file.
 
-use `conda env create -f mini_env.yml -y` to install the enviornment. Then use `source activate mini_semmed` to start the environment.
+use `mamba env create -f mini_env.yml -y` to install the enviornment. Then use `source activate mini_semmed` to start the environment.
 
 ## Requirements
 

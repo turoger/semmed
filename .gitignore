@@ -11,8 +11,12 @@ data/*
 !data/edge_condense_map.csv
 
 # exclude most misc analyses unless explicitly stated
+0_prepare/*.ipynb
+1_build/*.ipynb
+2_ml/*.ipynb
 ml/*
 !ml/README.md
+
 
 ##################################################################################
 #                                                                                #

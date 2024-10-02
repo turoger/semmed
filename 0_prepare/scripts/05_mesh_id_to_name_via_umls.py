@@ -29,7 +29,9 @@ def parse_args(args=None):
 def main(args):
     print("Running 05_mesh_id_to_name_via_umls.py")
     print("... Loading umls files")
-    conso = load_umls.open_mrconso()
+    conso = load_umls.open_mrconso(
+        f"../data/{args.umls_date}-full/{args.umls_date}/META/"
+    )
     msh_rows = conso.filter(pl.col("SAB") == "MSH")
 
     print("... Loading old MeSH mappings to reprocess")

@@ -3,9 +3,10 @@ import gc
 import pickle
 import sys
 
-import mygene
 import pandas as pd
 import polars as pl
+
+import mygene
 
 sys.path.append("../tools")
 import load_umls
@@ -24,6 +25,13 @@ def parse_args(args=None):
         default="VER43_R",
         type=str,
         help="version number, a string, for SemMed dump",
+    )
+    parser.add_argument(
+        "-d",
+        "--umls_date",
+        default="2023AA",
+        type=str,
+        help="downloaded semmed version year followed by two capitalized, alphabetical characters",
     )
 
     return parser.parse_args(args)
@@ -239,7 +247,9 @@ def main(args):
         f"... {len(hgnc_ids):,} out of {len(need_map):,} Entrez IDs can be mapped to HGNC via mygene.info"
     )
     print("... mapping CUI to HGNC from the UMLS metathesaurus")
-    conso = load_umls.open_mrconso()
+    conso = load_umls.open_mrconso(
+        f"../data/{args.umls_date}-full/{args.umls_date}/META/"
+    )
     q_res = conso.filter(pl.col("SCUI").is_in(hgnc_ids), pl.col("TTY") == "MTH_ACR")
     # q_res = conso.query('SCUI in @hgnc_ids and TTY == "MTH_ACR"')
     hgnc_to_cui = dict(zip(q_res["SCUI"], q_res["CUI"]))
@@ -400,7 +410,9 @@ def main(args):
     # Remove Depricated CUIs
     # Get the map from old CUIs to new CUIs
     print("... getting retired CUIs")
-    retired_cui = load_umls.open_mrcui()
+    retired_cui = load_umls.open_mrcui(
+        f"../data/{args.umls_date}-full/{args.umls_date}/META/"
+    )
 
     # Get the map from old CUIs to new CUIs conditioned on only occuring once (direct maps, no many to one or one to many)
     retired_cui = (

@@ -35,6 +35,8 @@ def main(args):
             "./scripts/01_initial_data_clean.py",
             "--semmed_version",
             args.semmed_version,
+            "--umls_date",
+            args.umls_date,
         ]
     )
     subprocess.run(

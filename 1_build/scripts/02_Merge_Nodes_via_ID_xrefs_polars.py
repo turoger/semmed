@@ -40,6 +40,14 @@ def parse_args(args=None):
         help="version number, a string, for SemMed dump",
     )
 
+    parser.add_argument(
+        "-d",
+        "--umls_date",
+        default="2023AA",
+        type=str,
+        help="downloaded semmed version year followed by two capitalized, alphabetical characters",
+    )
+
     return parser.parse_args(args)
 
 
@@ -323,7 +331,9 @@ def main(args):
     )
 
     # loading umls dataframe and extract snomedct_us identifiers
-    conso = load_umls.open_mrconso()
+    conso = load_umls.open_mrconso(
+        f"../data/{args.umls_date}-full/{args.umls_date}/META/"
+    )
     snomed_xrefs = conso.filter(
         pl.col("SAB") == "SNOMEDCT_US", pl.col("LAT") == "ENG"
     ).drop_nulls(subset=["CUI", "SCUI"])

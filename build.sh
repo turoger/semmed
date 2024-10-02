@@ -176,8 +176,8 @@ if [ -z "${HPO_YEAR}" ]; then HPO_YEAR=1987;fi
 # Setup virtual environment. If it already exists, skip
 #
 echo "Creating virtual environment"
-eval "$(mamba shell.bash hook)" # instantiates conda hook
-VENV=$(mamba env list | grep mini_semmed | awk '{print $1}')
+eval "$(conda shell.bash hook)" # instantiates conda hook
+VENV=$(mamba env list | grep mini_semmed2 | awk '{print $1}')
 if ! [ -n "$VENV" ]; then
     mamba env create -f mini_env.yml
     echo "Virtual environment created"
@@ -194,7 +194,7 @@ bash download_requirements.sh --host $HOST --port $PORT --user $USER --pass $PAS
 # Pre-processing
 echo "Preparing SEMMED Heterogenous Network"
 echo "... loading conda environment (mini_semmed)"
-mamba run -n mini_semmed --no-capture-output python preprocessing.py --semmed_version $SEM_VER --umls_date $UMLS_DATE
+mamba run -n mini_semmed2 --no-capture-output python preprocessing.py --semmed_version $SEM_VER --umls_date $UMLS_DATE
 # conda run -n mini_semmed python ./scripts/01_initial_data_clean.py --semmed_version $SEM_VER
 # conda run -n mini_semmed python ./scripts/02_id_to_publication_year.py --semmed_version $SEM_VER
 # conda run -n mini_semmed python ./scripts/03_umls_cui_to_mesh_descriptorID.py --semmed_version $SEM_VER  --umls_date $UMLS_DATE
@@ -256,7 +256,7 @@ fi
 #
 # run rest of the pipeline. Please check flags to make sure version drugcentral and semmed downloaded matches
 # 
-mamba run -n mini_semmed --no-capture-output python building.py --semmed_version $SEM_VER $DROP_NEGATIVE_EDGES $CONVERT_NEG $INCLUDE_DIRECTION $TIME $HPO $TTV --base_dir $BASE_DIR --dc_date $DC_DATE --hpo_year $HPO_YEAR
+mamba run -n mini_semmed2 --no-capture-output python building.py --semmed_version $SEM_VER $DROP_NEGATIVE_EDGES $CONVERT_NEG $INCLUDE_DIRECTION $TIME $HPO $TTV --base_dir $BASE_DIR --dc_date $DC_DATE --hpo_year $HPO_YEAR
 # conda run -n mini_semmed python ./scripts/01_build_hetnet_polars.py --semmed_version $SEM_VER $DROP_NEGATIVE_EDGES $CONVERT_NEG $INCLUDE_DIRECTION
 # conda run -n mini_semmed python ./scripts/02_Merge_Nodes_via_ID_xrefs_polars.py --dc_date $DC_DATE --semmed_version $SEM_VER
 # conda run -n mini_semmed python ./scripts/03_Condense_edge_semmantics_polars.py --semmed_version $SEM_VER

@@ -1,4 +1,4 @@
-name: mini_semmed
+name: mini_semmed2
 channels:
   - conda-forge
   - bioconda

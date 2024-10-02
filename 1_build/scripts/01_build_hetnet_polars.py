@@ -102,7 +102,7 @@ def main(args):
     # umls abbreviations to semtype
     print("... Creating mappings between UMLS abbreviations and semantic types")
     abbv_to_type = dict()
-    with open("../data/SemanticTypes_2018AB.txt") as fin:
+    with open("../data/SemanticTypes.txt") as fin:
         for line in fin:
             line = line.strip()
             lspt = line.split("|")
@@ -112,7 +112,7 @@ def main(args):
     # umls semtype to supertype mapping
     print("... Creating mappings between UMLS semantic types and super types")
     abbv_to_super = dict()
-    with open("../data/SemGroups_2018.txt") as fin:
+    with open("../data/SemGroups.txt") as fin:
         for line in fin:
             line = line.strip()
             lspt = line.split("|")
@@ -175,7 +175,7 @@ def main(args):
 
     print("... Getting TUI to super semantic type map")
     t_code_to_super = dict()
-    with open("../data/SemGroups_2018.txt") as fin:
+    with open("../data/SemGroups.txt") as fin:
         for line in fin:
             line = line.strip()
             ls = line.split("|")

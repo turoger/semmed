@@ -3,6 +3,19 @@ import pickle
 
 import polars as pl
 
+# Set up logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter("[%(asctime)s] \t %(message)s", "%Y-%m-%d %H:%M:%S")
+
+# create console handler and set level to info
+ch = logging.StreamHandler(sys.stdout)
+ch.setLevel(logging.INFO)
+ch.setFormatter(formatter)
+
+# add ch to logger
+logger.addHandler(ch)
+
 
 def parse_args(args=None):
     parser = argparse.ArgumentParser(
@@ -32,8 +45,8 @@ def parse_args(args=None):
 
 def main(args):
 
-    print("Running 03_umls_cui_to_mesh_descriptorID.py")
-    print("... Import MRCONSO.RRF")
+    logger.info("Running 03_umls_cui_to_mesh_descriptorID.py")
+    logger.info("... Import MRCONSO.RRF")
     df = pl.read_csv(
         source=f"../data/{args.umls_date}-full/{args.umls_date}/META/MRCONSO.RRF",
         separator="|",
@@ -60,12 +73,12 @@ def main(args):
             "CVF": pl.Utf8,
         },
     ).filter(pl.col("LAT") == "ENG", pl.col("ISPREF") == "Y", pl.col("SAB") == "MSH")
-    print("... Fix columns and extract CUI to MSH mappings")
+    logger.info("... Fix columns and extract CUI to MSH mappings")
     # create a cui to mesh mapping
     grpd = df.group_by("CUI").agg("SDUI").with_columns(pl.col("SDUI").list.unique())
     cui_to_msh = dict(zip(grpd["CUI"].to_list(), grpd["SDUI"].to_list()))
-    print(f"... Number of CUI to MeSH maps: {len(cui_to_msh):,}")
-    print("... Exporting UMLS CUI to MeSH mappings")
+    logger.info(f"... Number of CUI to MeSH maps: {len(cui_to_msh):,}")
+    logger.info("... Exporting UMLS CUI to MeSH mappings")
     # dump conversion
     with open("../data/UMLS-CUI_to_MeSH-Descripctor.pkl", "wb") as f:
         pickle.dump(cui_to_msh, f)
@@ -83,13 +96,13 @@ def main(args):
     to_name = df.filter(pl.col("CUI").is_in(cuis))
 
     msh_to_name = dict(zip((x := to_name.unique("SDUI"))["SDUI"], x["STR"]))
-    print(
+    logger.info(
         "... Exporting quick and dirty name map from CUI to MeSH for CUI to multiple MeSH IDs"
     )
     with open("../data/MeSH_to_name_quick_n_dirty.pkl", "wb") as f:
         pickle.dump(msh_to_name, f)
 
-    print("Complete. 03_umls_cui_to_mesh_descriptorID.py has finished running.\n")
+    logger.info("Complete. 03_umls_cui_to_mesh_descriptorID.py has finished running.\n")
 
 
 if __name__ == "__main__":

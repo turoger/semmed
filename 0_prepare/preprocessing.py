@@ -32,6 +32,7 @@ def main(args):
     subprocess.run(
         [
             "python",
+            "-u",
             "./scripts/01_initial_data_clean.py",
             "--semmed_version",
             args.semmed_version,
@@ -42,6 +43,7 @@ def main(args):
     subprocess.run(
         [
             "python",
+            "-u",
             "./scripts/02_id_to_publication_year.py",
             "--semmed_version",
             args.semmed_version,
@@ -50,6 +52,7 @@ def main(args):
     subprocess.run(
         [
             "python",
+            "-u",
             "./scripts/03_umls_cui_to_mesh_descriptorID.py",
             "--semmed_version",
             args.semmed_version,
@@ -58,11 +61,18 @@ def main(args):
         ]
     )
     subprocess.run(
-        ["python", "./scripts/04_parse_mesh_data.py", "--umls_date", args.umls_date]
+        [
+            "python",
+            "-u",
+            "./scripts/04_parse_mesh_data.py",
+            "--umls_date",
+            args.umls_date,
+        ]
     )
     subprocess.run(
         [
             "python",
+            "-u",
             "./scripts/05_mesh_id_to_name_via_umls.py",
         ]
     )

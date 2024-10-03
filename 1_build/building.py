@@ -94,6 +94,7 @@ def main(args):
     }
     script_1_ls = [
         "python",
+        "-u",
         "./scripts/01_build_hetnet_polars.py",
         "--semmed_version",
         args.semmed_version,
@@ -108,6 +109,7 @@ def main(args):
     subprocess.run(
         [
             "python",
+            "-u",
             "./scripts/02_Merge_Nodes_via_ID_xrefs_polars.py",
             "--semmed_version",
             args.semmed_version,
@@ -124,6 +126,7 @@ def main(args):
     }
     script_3_ls = [
         "python",
+        "-u",
         "./scripts/03_Condense_edge_semmantics_polars.py",
         "--semmed_version",
         args.semmed_version,
@@ -137,6 +140,7 @@ def main(args):
     subprocess.run(
         [
             "python",
+            "-u",
             "./scripts/04_filter_low_abundance_edges_polars.py",
             "--semmed_version",
             args.semmed_version,
@@ -147,6 +151,7 @@ def main(args):
     subprocess.run(
         [
             "python",
+            "-u",
             "./scripts/05_Keep_Six_relevant_metanodes_polars.py",
             "--semmed_version",
             args.semmed_version,
@@ -157,6 +162,7 @@ def main(args):
     subprocess.run(
         [
             "python",
+            "-u",
             "./scripts/06_Resolve_Network_Edges_by_Time_polars.py",
             "--semmed_version",
             args.semmed_version,
@@ -173,6 +179,7 @@ def main(args):
     }
     script_7_ls = [
         "python",
+        "-u",
         "./scripts/07_Build_data_split.py",
         "--semmed_version",
         args.semmed_version,

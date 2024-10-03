@@ -7,6 +7,19 @@ from collections import defaultdict
 
 from lxml import etree
 
+# Set up logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter("[%(asctime)s] \t %(message)s", "%Y-%m-%d %H:%M:%S")
+
+# create console handler and set level to info
+ch = logging.StreamHandler(sys.stdout)
+ch.setLevel(logging.INFO)
+ch.setFormatter(formatter)
+
+# add ch to logger
+logger.addHandler(ch)
+
 
 def parse_args(args=None):
     parser = argparse.ArgumentParser(
@@ -27,27 +40,27 @@ def parse_args(args=None):
 
 
 def main(args):
-    print("Running 04_parse_mesh_data.py")
-    print("... Downloading mesh files from NIH via ftp")
+    logger.info("Running 04_parse_mesh_data.py")
+    logger.info("... Downloading mesh files from NIH via ftp")
     date = args.umls_date[0:4]
 
     supp_filename = f"../data/supp{date}.xml"
     desc_filename = f"../data/desc{date}.xml"
 
     if not os.path.exists(supp_filename):
-        print(f"... Downloading supp{date}.xml")
+        logger.info(f"... Downloading supp{date}.xml")
         urllib.request.urlretrieve(
             f"https://nlmpubs.nlm.nih.gov/projects/mesh/{2023}/xmlmesh/supp{date}.xml",
             filename=supp_filename,
         )
     if not os.path.exists(desc_filename):
-        print(f"... Downloading desc{date}.xml")
+        logger.info(f"... Downloading desc{date}.xml")
         urllib.request.urlretrieve(
             f"https://nlmpubs.nlm.nih.gov/projects/mesh/{2023}/xmlmesh/desc{date}.xml",
             filename=desc_filename,
         )
 
-    print(f"... Get file roots")
+    logger.info(f"... Get file roots")
     desc_root = ET.parse(
         desc_filename, parser=etree.XMLParser(recover=True, encoding="utf-8")
     ).getroot()
@@ -80,13 +93,13 @@ def main(args):
         supp_root, id_to_name, "SupplementalRecordUI", "SupplementalRecordName"
     )
 
-    print(f"... {len(id_to_name):,} MeSH Descriptor/Supplemental IDs extracted")
+    logger.info(f"... {len(id_to_name):,} MeSH Descriptor/Supplemental IDs extracted")
     filename = "../data/MeSH_DescUID_to_Name.pkl"
-    print(f"... exporting to {filename}")
+    logger.info(f"... exporting to {filename}")
     with open(filename, "wb") as f:
         pickle.dump(id_to_name, f)
 
-    print(f"... Getting tree-values for children")
+    logger.info(f"... Getting tree-values for children")
     id_to_treenumbs = defaultdict(list)
     for descriptor in desc_root.getchildren():
         for child in descriptor.getchildren():
@@ -97,11 +110,11 @@ def main(args):
                     id_to_treenumbs[uid].append(tn.text)
 
     filename = "../data/MeSH_DescUID_to_TreeNumbs.pkl"
-    print(f"... exporting to {filename}")
+    logger.info(f"... exporting to {filename}")
     with open(filename, "wb") as f:
         pickle.dump(id_to_treenumbs, f)
 
-    print("Complete. 04_parse_mesh_data.py has finished running. \n")
+    logger.info("Complete. 04_parse_mesh_data.py has finished running. \n")
 
 
 if __name__ == "__main__":

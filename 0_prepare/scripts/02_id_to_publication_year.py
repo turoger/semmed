@@ -17,6 +17,19 @@ from tqdm import tqdm  # 2b
 sys.path.append("../tools/")
 from parallel import parallel_process
 
+# Set up logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter("[%(asctime)s] \t %(message)s", "%Y-%m-%d %H:%M:%S")
+
+# create console handler and set level to info
+ch = logging.StreamHandler(sys.stdout)
+ch.setLevel(logging.INFO)
+ch.setFormatter(formatter)
+
+# add ch to logger
+logger.addHandler(ch)
+
 
 def parse_args(args=None):
     parser = argparse.ArgumentParser(
@@ -40,9 +53,9 @@ def main(args):
     #
     # 02a-id_to_publication_year-PMC starts here
     #
-    print("Running 02_id_to_publication_year.py")
-    print("Map PMIDs to Year using PubMedCentral (approx. 1 minute)")
-    print("... Downloading PubMed ID to Year Map from PubMed Central.")
+    logger.info("Running 02_id_to_publication_year.py")
+    logger.info("Map PMIDs to Year using PubMedCentral (approx. 1 minute)")
+    logger.info("... Downloading PubMed ID to Year Map from PubMed Central.")
     filename = "../data/PMC-ids-csv.gz"
     if not os.path.exists(filename):
         urllib.request.urlretrieve(
@@ -50,44 +63,44 @@ def main(args):
             filename=filename,
         )
 
-    print(f"... Load and Retrieve PMIDs from pmid_list_{args.semmed_version}.txt")
+    logger.info(f"... Load and Retrieve PMIDs from pmid_list_{args.semmed_version}.txt")
     pmids = []
     with open(f"../data/pmid_list_{args.semmed_version}.txt", "r") as fin:
         for line in fin.readlines():
             pmids.append(line.strip())
-    print(f"... ... Number of Retrieved PMIDs: {len(pmids):,}")
-    print(f"... Load downloaded PubMed Central retrieved IDs, drop Null Values")
+    logger.info(f"... ... Number of Retrieved PMIDs: {len(pmids):,}")
+    logger.info(f"... Load downloaded PubMed Central retrieved IDs, drop Null Values")
 
     with gzip.open(filename) as f:
         df = pl.read_csv(f.read(), ignore_errors=True)
 
     df = df.drop_nulls("PMID").with_columns(pl.col("PMID").cast(str))
-    print(f"... ... Length of the dataframe: {len(df):,}")
-    print(f'... ... Number of PMIDs in dataframe: {df["PMID"].unique().len():,}')
+    logger.info(f"... ... Length of the dataframe: {len(df):,}")
+    logger.info(f'... ... Number of PMIDs in dataframe: {df["PMID"].unique().len():,}')
 
-    print("... Converting dataframe to dictionary")
+    logger.info("... Converting dataframe to dictionary")
     pmid_to_year = dict(zip(df["PMID"].to_list(), df["Year"].to_list()))
 
     mapped = set(pmid_to_year.keys())
     no_map = set(pmids) - mapped
-    print(f"... Number of PMIDs mapped: {len(no_map):,}")
-    print(f"... Remaining PMIDs unmapped: {len(no_map):,}")
-    print("... Exporting mapped pmid_to_year to ../data/pmid_to_year_PMC.pkl")
+    logger.info(f"... Number of PMIDs mapped: {len(no_map):,}")
+    logger.info(f"... Remaining PMIDs unmapped: {len(no_map):,}")
+    logger.info("... Exporting mapped pmid_to_year to ../data/pmid_to_year_PMC.pkl")
     pickle.dump(pmid_to_year, open("../data/pmid_to_year_PMC.pkl", "wb"))
-    print("... Exporting unmapped pmid_to_year to ../data/no_map_PMC.pkl")
+    logger.info("... Exporting unmapped pmid_to_year to ../data/no_map_PMC.pkl")
     pickle.dump(no_map, open("../data/no_map_PMC.pkl", "wb"))
 
-    print("Complete.\n")
+    logger.info("Complete.\n")
 
     #
     # 02B-id_to_publication_year-EuroPMC starts here
     #
-    print("Map PMIDs to Year using Europe PMC")
+    logger.info("Map PMIDs to Year using Europe PMC")
 
-    print("... Checking for PMC Lite Metadata tgz file")
+    logger.info("... Checking for PMC Lite Metadata tgz file")
     filename = "../data/PMCLiteMetadata.tgz"
     if not os.path.exists(filename):
-        print(
+        logger.info(
             "... Downloading PubMed ID to Year Map from Europe PMC. (approx. 20 minutes)"
         )
 
@@ -95,7 +108,7 @@ def main(args):
             "http://europepmc.org/ftp/pmclitemetadata/PMCLiteMetadata.tgz",
             filename=filename,
         )
-    print("... Extract xml from the downloaded tgz. (approx. 3 minutes)")
+    logger.info("... Extract xml from the downloaded tgz. (approx. 3 minutes)")
 
     if not os.path.exists("../data/out"):
         pmc_tar = tarfile.open("../data/PMCLiteMetadata.tgz")
@@ -154,7 +167,7 @@ def main(args):
                 },
             )
 
-    print("... Processing XML files into a dataframe.")
+    logger.info("... Processing XML files into a dataframe.")
     frames = []
     base = (
         "../data/out"  # this is where the output of the Europe PMC object was extracted
@@ -171,72 +184,72 @@ def main(args):
 
     result = pl.concat(frames)
     pmid_mapper = dict(zip(result["pmid"].to_list(), result["PubYear"].to_list()))
-    print(f"... Size of dataframe extracted from Europe PMC: {len(result):,}")
-    print(f"... Importing unmapped PMIDs (missing dates)")
+    logger.info(f"... Size of dataframe extracted from Europe PMC: {len(result):,}")
+    logger.info(f"... Importing unmapped PMIDs (missing dates)")
     # prev_no_map = pickle.load(open("../data/no_map_PMC.pkl", "rb"))
-    print(f"... Number of unmapped PMIDs: {len(no_map):,}")
-    print("... Mapping PMIDs using Europe PMC")
+    logger.info(f"... Number of unmapped PMIDs: {len(no_map):,}")
+    logger.info("... Mapping PMIDs using Europe PMC")
     mapped = set(pmid_mapper.keys())
     new_no_map = no_map - mapped
 
-    print(f"... Number of remaining unmapped PMIDs: {len(new_no_map):,}")
-    print(f"... Exporting mapped pmid_to_year to ../data/pmid_to_year_Eur.pkl")
+    logger.info(f"... Number of remaining unmapped PMIDs: {len(new_no_map):,}")
+    logger.info(f"... Exporting mapped pmid_to_year to ../data/pmid_to_year_Eur.pkl")
     pickle.dump(pmid_mapper, open("../data/pmid_to_year_Eur.pkl", "wb"))
 
-    print(f"... Exporting unmapped pmid_to_year to ../data/no_map_Eur.pkl")
+    logger.info(f"... Exporting unmapped pmid_to_year to ../data/no_map_Eur.pkl")
     pickle.dump(new_no_map, open("../data/no_map_Eur.pkl", "wb"))
 
-    print("Complete. \n")
+    logger.info("Complete. \n")
 
     #
     # 02C-id_to_publication_year-NLM_Baseline starts here
     #
 
-    print(
+    logger.info(
         "Map PMIDs to Year using National Library of Medicine Baseline documents (approx. 10 minutes)"
     )
-    print(f"... processing xmls")
+    logger.info(f"... processing xmls")
     base = "../data/baseline/"
     files = [f for f in os.listdir(base) if f.endswith(".xml.gz")]
 
     # Last 4 characters before .xml indicate file's order
     files = sorted(files, key=lambda f: int(f.split(".")[0][-4:]))
-    print(f"... Number of files to process: {len(files):,}")
-    print(f"... Processing")
+    logger.info(f"... Number of files to process: {len(files):,}")
+    logger.info(f"... Processing")
 
     results = parallel_process(files, get_id_to_year_map, n_jobs=32, front_num=0)
-    print(f"... Files processed: {len(results):,}")
+    logger.info(f"... Files processed: {len(results):,}")
 
-    # print(f'... Add a year to every entry in the file')
+    # logger.info(f'... Add a year to every entry in the file')
     adict = dd(int)
     for r in results:
         adict[type(r)] += 1
     id_to_year = {}
-    print(f"... Filter out malformed xml entries from the year dictionary")
+    logger.info(f"... Filter out malformed xml entries from the year dictionary")
     for r in results:
         try:
             id_to_year.update(r)
         except:
-            print("... ... Did not update entry in the dictionary: ", r)
+            logger.info("... ... Did not update entry in the dictionary: ", r)
             pass
 
-    print(f"... Number of entries in updated year dict: {len(id_to_year):,}")
+    logger.info(f"... Number of entries in updated year dict: {len(id_to_year):,}")
     id_to_year_filt = {k: v for k, v, in id_to_year.items() if v is not None}
-    print(
+    logger.info(
         f"... Number of entries in updated year dict not NaN: {len(id_to_year_filt):,}"
     )
-    print(f"... Load past unmapped PMIDs from ../data/no_map_Eur.pkl")
+    logger.info(f"... Load past unmapped PMIDs from ../data/no_map_Eur.pkl")
     # prev_no_map = pickle.load(open("../data/no_map_Eur.pkl", "rb"))
     prev_no_map = new_no_map
     still_no_map = set(prev_no_map) - set(id_to_year.keys())
-    print(f"... Remaining unmapped entries: {len(still_no_map):,}")
+    logger.info(f"... Remaining unmapped entries: {len(still_no_map):,}")
 
-    print(f"... Exporting mapped pmid_to_year to ../data/pmid_to_year_NLM.pkl")
+    logger.info(f"... Exporting mapped pmid_to_year to ../data/pmid_to_year_NLM.pkl")
     pickle.dump(id_to_year, open("../data/pmid_to_year_NLM.pkl", "wb"))
-    print(f"... Exporting unmapped pmid_to_year to ../data/no_map_NLM.pkl")
+    logger.info(f"... Exporting unmapped pmid_to_year to ../data/no_map_NLM.pkl")
     pickle.dump(still_no_map, open("../data/no_map_NLM.pkl", "wb"))
-    print(
-        "Complete. 02C-id_to_publication_year-NLM_Baseline.py has finished running. \n"
+    logger.info(
+        "Complete.\n"  # 02C-id_to_publication_year-NLM_Baseline.py has finished running. \n"
     )
 
     #
@@ -264,24 +277,26 @@ def main(args):
             return min(dates)
         return None
 
-    print("Retrieving PMID dates from Europe PMC API")
+    logger.info("Retrieving PMID dates from Europe PMC API")
     while len(new_map) <= len(still_no_map):
         # loads pickle file so you don't start from scratch
         new_map_file = os.path.join("../data", "new_map.pkl")
         if os.path.exists(new_map_file):
             with open(new_map_file, "rb") as f:
                 new_map = pickle.load(f)
-            print(
-                f"... importing already requested pmids. {len(new_map):,}/{len(still_no_map):,} already requested."
+
+            all_map = set(new_map.keys()).union(set(still_no_map))
+            logger.info(
+                f"... importing already requested pmids. {len(new_map):,}/{len(all_map):,} already requested."
             )
         else:
-            print(
+            logger.info(
                 f"... no exported file found, starting from scratch. This can take over 2 days to run."
             )
             new_map = {}
         # extract out the remaining unmapped items
         still_no_map = still_no_map.difference(set(new_map.keys()))
-        print(f"... remaining unmapped: {len(still_no_map):,}")
+        logger.info(f"... remaining unmapped: {len(still_no_map):,}")
 
         for pmid in tqdm(list(still_no_map)):
             r = requests.get(URL.format(pmid))
@@ -303,17 +318,19 @@ def main(args):
         pickle.dump(new_map, f)
 
     new_map = {k: v for k, v in new_map.items() if v is not None}
-    print(f"... Mapped PMID entry to a date: {len(new_map):,}")
+    logger.info(f"... Mapped PMID entry to a date: {len(new_map):,}")
 
     final_no_map = still_no_map - set(new_map.keys())
-    print(f"... Remaining unmapped entries: {len(final_no_map):,}")
+    logger.info(f"... Remaining unmapped entries: {len(final_no_map):,}")
 
-    print("\nExporting files")
-    print(f"... Exporting mapped pmid_to_year to ../data/pmid_to_year_EBI.pkl")
+    logger.info("\nExporting files")
+    logger.info(f"... Exporting mapped pmid_to_year to ../data/pmid_to_year_EBI.pkl")
     pickle.dump(new_map, open("../data/pmid_to_year_EBI.pkl", "wb"))
-    print("... Exporting unmapped pmid_to_year to ../data/no_map_EBI.pkl")
+    logger.info("... Exporting unmapped pmid_to_year to ../data/no_map_EBI.pkl")
     pickle.dump(final_no_map, open("../data/no_map_EBI.pkl", "wb"))
-    print("Complete. 02D-id_to_publication_year-ebi_API.py has finished running. \n")
+    logger.info(
+        "Complete. 02D-id_to_publication_year-ebi_API.py has finished running. \n"
+    )
 
 
 # 2c functions

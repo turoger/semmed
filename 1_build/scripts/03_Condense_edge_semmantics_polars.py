@@ -1,10 +1,25 @@
 import argparse
+import logging
 import re
+import sys
 from collections.abc import *
 from typing import Union
 
 import polars as pl
 from tqdm import tqdm
+
+# Set up logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter("[%(asctime)s] \t %(message)s", "%Y-%m-%d %H:%M:%S")
+
+# create console handler and set level to info
+ch = logging.StreamHandler(sys.stdout)
+ch.setLevel(logging.INFO)
+ch.setFormatter(formatter)
+
+# add ch to logger
+logger.addHandler(ch)
 
 
 def parse_args(args=None):
@@ -42,8 +57,8 @@ def parse_args(args=None):
 
 #### Condense Edge Semmantics
 def main(args):
-    print("Running 03_Condense_edge_semantics.py")
-    print("... Importing Nodes and Edges file")
+    logger.info("Running 03_Condense_edge_semantics.py")
+    logger.info("... Importing Nodes and Edges file")
     nodes = pl.read_parquet(f"../data/nodes_{args.semmed_version}_consolidated.parquet")
     edges = pl.read_parquet(f"../data/edges_{args.semmed_version}_consolidated.parquet")
 
@@ -61,7 +76,7 @@ def main(args):
             "n_pmids",
         ]
     ]
-    print("... clean up edge types and abbreviations")
+    logger.info("... clean up edge types and abbreviations")
     edges = edges.with_columns(
         (
             pl.col("edge")
@@ -86,7 +101,7 @@ def main(args):
     )
 
     if args.drop_negative_relations or args.convert_negative_relations:
-        print("... Condensing edge semantics")
+        logger.info("... Condensing edge semantics")
 
         edge_map = pl.read_csv("../data/edge_condense_map.csv")
 
@@ -102,14 +117,14 @@ def main(args):
             edge_map["reverse"].to_list(),
         )
 
-        print(
+        logger.info(
             f"... Edge count prior to consolidating relation types: {edges.shape[0]:,}"
         )
-        print(
+        logger.info(
             f"... Edge count after consolidating relation types: {edges_consolidated3.shape[0]:,}"
         )
     else:
-        print(
+        logger.info(
             "... No edge semantics to condense as `--drop_negative_relations` and/or `--convert_negative_relations` are False."
         )
         edges_consolidated3 = (
@@ -126,7 +141,7 @@ def main(args):
         )
 
     #### Remove duplicated undirected edges
-    print("Removing duplicated undirected edges")
+    logger.info("Removing duplicated undirected edges")
     # check all edge ids in nodes
     assert (
         tmp := edges_consolidated3.filter(~pl.col("h_id").is_in(nodes["id"])).shape[0]
@@ -144,7 +159,7 @@ def main(args):
         )
     )
 
-    print(f"... replacing duplicated undirected edges after edge consolidation")
+    logger.info(f"... replacing duplicated undirected edges after edge consolidation")
     edges = edges_consolidated3.with_columns(
         pl.col("r").map_elements(lambda e: "_".join(e.split("_")[:-1])).alias("sem"),
         pl.col("r").map_elements(lambda e: e.split("_")[-1]).alias("abbrev"),
@@ -158,7 +173,11 @@ def main(args):
     )
     # ensures that the abbreviations are correct because we removed the direction, and reapplied a relation conversion
     # edges = edges.drop("abbrev").rename({"calc_abbrev": "abbrev"})
-    print(f"... checking transformation with some assertions")
+    logger.info(f"... checking transformation with some assertions")
+
+    # import pdb
+
+    # pdb.set_trace()
     # # check your transformation
     assert (
         sum(edges["calc_abbrev"] != edges["abbrev"]) == 0
@@ -183,7 +202,7 @@ def main(args):
     ).shape[0] == 0, "There are nodes with multiple types"
 
     #### Undirected edges between two nodes of the same type should only have 1 instance
-    print("Remove duplicate edges between nodes of the same type...")
+    logger.info("Remove duplicate edges between nodes of the same type...")
     # Get the edges that are un-directed, between same type
     self_ref_df = edges.filter(
         (pl.col("htype") == pl.col("ttype")) & (~pl.col("abbrev").str.contains(">"))
@@ -194,7 +213,7 @@ def main(args):
     non_self_ref_df = edges.join(
         self_ref_df, on=["h_id", "t_id", "sem", "rtype", "abbrev"], how="anti"
     ).drop("")
-    print(f"... dropping duplicates of non-directional edge types")
+    logger.info(f"... dropping duplicates of non-directional edge types")
 
     # For self referential edge types without direction, sort the h_id and t_id and drop duplicates
     # group by h_id,t_id,old_r,abbrev,rev_abbrev,is_neg,sem,rtype,calc_abbrev
@@ -249,10 +268,10 @@ def main(args):
             "rtype",
         ]
     ]
-    print(
+    logger.info(
         f"... Before De-duplication: {og_self_ref_df[0]:,} Edges between nodes of the same type"
     )
-    print(
+    logger.info(
         f"... After De-duplication: {self_ref_df.shape[0]:,} Edges between nodes of the same type"
     )
 
@@ -263,10 +282,10 @@ def main(args):
         ["h_id", "t_id", "sem", "rtype", "abbrev"]
     )
 
-    print(f"... {len(edges):,} edges before deduplication")
-    print(f"... {len(new_edges):,} edges after deduplication")
+    logger.info(f"... {len(edges):,} edges before deduplication")
+    logger.info(f"... {len(new_edges):,} edges after deduplication")
 
-    print(f"... double checks to ensure no nodes with multiple types")
+    logger.info(f"... double checks to ensure no nodes with multiple types")
     # check typing for all nodes, and make sure there are no nodes with multiple types
     assert (
         pl.concat(
@@ -285,7 +304,7 @@ def main(args):
         .filter(pl.col("count") > 1)
     ).shape[0] == 0, "There are nodes with multiple types"
 
-    print("... relabeling column names")
+    logger.info("... relabeling column names")
     # relabel the edge columns in the new_edges
     new_edges = new_edges.rename(
         {
@@ -335,7 +354,7 @@ def main(args):
 
     #### Export files
 
-    print(
+    logger.info(
         f"... exporting processed edges at: '../data/edges_{args.semmed_version}_consolidated_condensed.parquet'"
     )
     # save the new_edges
@@ -347,7 +366,7 @@ def main(args):
         f"../data/nodes_{args.semmed_version}_consolidated_condensed.parquet"
     )
 
-    print("Complete processing 03_Condensing_edge_semantics.py\n")
+    logger.info("Complete processing 03_Condensing_edge_semantics.py\n")
 
 
 #### Functions for condensing edge semantics

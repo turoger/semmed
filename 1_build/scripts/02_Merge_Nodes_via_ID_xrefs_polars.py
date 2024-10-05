@@ -2,6 +2,7 @@
 # Meant as a script to download everything without going through the notebook
 
 import argparse
+import logging
 import os
 import pickle
 import sys
@@ -15,6 +16,19 @@ from wikidataintegrator import wdi_core
 
 sys.path.append("../tools")
 import load_umls
+
+# Set up logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter("[%(asctime)s] \t %(message)s", "%Y-%m-%d %H:%M:%S")
+
+# create console handler and set level to info
+ch = logging.StreamHandler(sys.stdout)
+ch.setLevel(logging.INFO)
+ch.setFormatter(formatter)
+
+# add ch to logger
+logger.addHandler(ch)
 
 
 def parse_args(args=None):
@@ -41,7 +55,7 @@ def parse_args(args=None):
     )
 
     parser.add_argument(
-        "-d",
+        "-u",
         "--umls_date",
         default="2023AA",
         type=str,
@@ -53,15 +67,17 @@ def parse_args(args=None):
 
 def main(args):
     # load data
-    print("Running 02_Merge_Nodes_via_ID_xrefs.py")
-    print(f"-- dc_date (DrugCentral Date): {args.dc_date}")
-    print(f"-- semmed_version (SemMed Version): {args.semmed_version}\n")
-    print("Importing DrugCentral information for Gold Standard and Add Compound Names")
-    print("... Loading drugcentral_rel dataframe")
+    logger.info("Running 02_Merge_Nodes_via_ID_xrefs.py")
+    logger.info(f"-- dc_date (DrugCentral Date): {args.dc_date}")
+    logger.info(f"-- semmed_version (SemMed Version): {args.semmed_version}\n")
+    logger.info(
+        "Importing DrugCentral information for Gold Standard and Add Compound Names"
+    )
+    logger.info("... Loading drugcentral_rel dataframe")
     rels = pl.read_csv(f"../data/drugcentral_rel_{args.dc_date}.csv")
-    print("... Loading drugcentral_ids dataframe")
+    logger.info("... Loading drugcentral_ids dataframe")
     dc_ids = pl.read_csv(f"../data/drugcentral_ids_{args.dc_date}.csv")
-    print("... Loading drugcentral_syn dataframe")
+    logger.info("... Loading drugcentral_syn dataframe")
     pref = (
         pl.read_csv(f"../data/drugcentral_syn_{args.dc_date}.csv")
         .rename({"id": "struct_id"})
@@ -78,7 +94,7 @@ def main(args):
     ), "Some concept names are missing"
 
     #### Map compounds in Semmed DB to MeSH
-    print("Mapping compounds in semmed to MeSH")
+    logger.info("Mapping compounds in semmed to MeSH")
     nodes = pl.read_parquet(
         f"../data/nodes_{args.semmed_version}.parquet"
     )  # import semmed nodes file
@@ -92,10 +108,10 @@ def main(args):
         pl.col("id").replace(umls_to_mesh_1t1).alias("mesh_id")
     )  # relabel the UMLS ids with MeSH ids
     drugs = nodes.filter(pl.col("label") == "Chemicals & Drugs")
-    print(
+    logger.info(
         f"... {drugs['mesh_id'].is_not_null().sum()/drugs.shape[0]:.2%} of Drug IDs mapped via MeSH"
     )
-    print(
+    logger.info(
         f"... {drugs['mesh_id'].is_not_null().sum():,} of {drugs.shape[0]:,} mapped to {drugs.filter(pl.col('mesh_id').is_not_null())['mesh_id'].n_unique():,} Unique MSH ids."
     )
 
@@ -104,11 +120,11 @@ def main(args):
         "mesh_id"
     ].n_unique()
 
-    print(
+    logger.info(
         f"... {(num_drugs-msh_compress_drugs)/num_drugs:.2%} Reduction in Drugs by using MSH synonmyms {num_drugs:,} --> {msh_compress_drugs:,}"
     )
     #### Use UMLS MeSH mappings and Mappings from DrugCentral to ensure Maximum overlap
-    print("Generate MeSH to DrugCentral map")
+    logger.info("Generate MeSH to DrugCentral map")
     # get dataframe of specific id_types
     dc_maps = dc_ids.filter(
         pl.col("id_type").is_in(
@@ -119,7 +135,7 @@ def main(args):
     )  # turn id and struct_id to string
 
     # create a dictionary of drugs and their neighbors, bi-directional
-    print("... use drug identifiers to find nearest neighbor mesh identifiers")
+    logger.info("... use drug identifiers to find nearest neighbor mesh identifiers")
     drug_adj_list = dict(
         zip(  # struct:[identifier] mapping
             dc_maps.group_by("struct_id").agg(["identifier"])["struct_id"].to_list(),
@@ -139,11 +155,11 @@ def main(args):
     umls_to_mesh_df = pl.DataFrame(
         {"umls": umls_to_mesh.keys(), "mesh": umls_to_mesh.values()}
     ).explode("mesh")
-    print(f"... umls to mesh mapping rows: {umls_to_mesh_df.shape[0]:,}")
+    logger.info(f"... umls to mesh mapping rows: {umls_to_mesh_df.shape[0]:,}")
     umls_to_mesh_drugs = umls_to_mesh_df.filter(
         pl.col("umls").is_in(drugs["id"].unique())
     )
-    print(
+    logger.info(
         f"... umls to mesh mapping rows after filtering for drug ids: {umls_to_mesh_drugs.shape[0]:,}"
     )
 
@@ -162,7 +178,7 @@ def main(args):
     assert (
         len(umls_set.intersection(mesh_set)) == 0
     ), "UMLS and MESH identifiers have at least one shared identifier; there should be zero."
-    print("... build drug identifier nearest neighbors adjacency matrix")
+    logger.info("... build drug identifier nearest neighbors adjacency matrix")
     drug_adj_list_df = pl.DataFrame(
         {"k": drug_adj_list.keys(), "v": drug_adj_list.values()}
     ).explode(columns="v")
@@ -199,7 +215,7 @@ def main(args):
             subnets[cui] = set(nx.bfs_tree(graph, cui, depth_limit=1))
         return subnets
 
-    print("... process adjacency matrix to calculate nearest neighbors")
+    logger.info("... process adjacency matrix to calculate nearest neighbors")
     subnets2 = get_subnets2(drug_adj_list)
     # get a count of all MeSH terms, the greater the count, the higher the term priority
     mesh_counts = (
@@ -210,7 +226,7 @@ def main(args):
     )
     mesh_counts = Counter(mesh_counts)
     # Based on the MeSH term counts, pick the nearest neighbor with the highest count
-    print("... picking nearest neighbor")
+    logger.info("... picking nearest neighbor")
     rekeyed_subnet2 = (
         pl.DataFrame(
             {"k": subnets2.keys(), "v": [list(i) for i in subnets2.values()]}
@@ -263,9 +279,13 @@ def main(args):
     final_drug_map = dict(
         zip(rekeyed_subnet3["k"].to_list(), rekeyed_subnet3["new"].to_list())
     )
-    print(f"... final drug map size prior to adding unmapped: {len(final_drug_map):,}")
+    logger.info(
+        f"... final drug map size prior to adding unmapped: {len(final_drug_map):,}"
+    )
     final_drug_map.update(unmapped_drug_dict)
-    print(f"... final drug map size after adding unmapped: {len(final_drug_map):,}")
+    logger.info(
+        f"... final drug map size after adding unmapped: {len(final_drug_map):,}"
+    )
 
     # some tests to ensure a couple items are mapped correctly
     assert (
@@ -277,11 +297,11 @@ def main(args):
     assert (
         final_drug_map["C0040989"] == "D014273"
     ), "Triflupromazine is not mapped properly; should be Triflupromazine."
-    print("... export drug to mesh mapping to '../data/drug_merge_map.pkl'")
+    logger.info("... export drug to mesh mapping to '../data/drug_merge_map.pkl'")
     pickle.dump(final_drug_map, open("../data/drug_merge_map.pkl", "wb"))
 
     #### 4. Map all the compounds and check
-    print("Mapping all the compounds to Drugs")
+    logger.info("Mapping all the compounds to Drugs")
     # Some items won't necessarily be mappable, so use original ID
     drugs = drugs.with_columns(
         pl.col("id").replace(final_drug_map).alias("new_id")
@@ -297,10 +317,10 @@ def main(args):
         pl.col("struct_id").cast(str).replace(final_drug_map).alias("compound_new_id")
     )
 
-    print(
+    logger.info(
         f'... reduced in drug nodes by: {(drugs.shape[0]-drugs.n_unique(subset="new_id"))/drugs.shape[0]:.2%}'
     )
-    print(f'... from {drugs.shape[0]:,} to {drugs.n_unique(subset="new_id"):,}')
+    logger.info(f'... from {drugs.shape[0]:,} to {drugs.n_unique(subset="new_id"):,}')
 
     # get counts of conversions
     inds = rels.filter(pl.col("relationship_name") == "indication")
@@ -311,17 +331,17 @@ def main(args):
         pl.col("compound_new_id").is_in(drug_ids_semmed)
     ).shape[0]
 
-    print(
+    logger.info(
         f"... {(num_ind_in_semmed/len(drugs_in_inds)):.2%} of Drugs in DC Indications mapped ({num_ind_in_semmed:,} out of {len(drugs_in_inds):,})"
     )
-    print(
+    logger.info(
         f"... {(ind_semmed_comp/len(inds)):.2%} of Indications have mappable Drugs ({ind_semmed_comp:,} out of {len(inds):,})"
     )
 
     #### Diseases. Use DO Slim to try and get general diseases
-    print("Mapping diseases to Disease Ontology Slim IDs to generalize diseases")
+    logger.info("Mapping diseases to Disease Ontology Slim IDs to generalize diseases")
     diseases = nodes.filter(pl.col("label") == "Disorders")
-    print(f"... Number of diseases in dataframe: {len(diseases):,}")
+    logger.info(f"... Number of diseases in dataframe: {len(diseases):,}")
     # mesh label to number of disease mappings
     dis_number = (
         diseases.group_by("mesh_id")
@@ -369,12 +389,14 @@ def main(args):
         .with_columns(pl.col("k").cast(str))[["k", "v"]]
     )
     dis_adj_df = pl.concat([a, b, c, d, e, f, g, h])
-    print(f"... Before removing duplicate diseases: {dis_adj_df.shape[0]:,}")
-    print(f"... After removing duplicate diseases: {dis_adj_df.unique().shape[0]:,}")
+    logger.info(f"... Before removing duplicate diseases: {dis_adj_df.shape[0]:,}")
+    logger.info(
+        f"... After removing duplicate diseases: {dis_adj_df.unique().shape[0]:,}"
+    )
 
     #### DO Slim Integration
-    print("Get DO Slim Ids from WikiData via WikiDataIntegrator")
-    print("... query Wikidata for doid to umlscui's")
+    logger.info("Get DO Slim Ids from WikiData via WikiDataIntegrator")
+    logger.info("... query Wikidata for doid to umlscui's")
     query_text = """
     select ?doid ?umlscui
 
@@ -384,7 +406,7 @@ def main(args):
         ?s wdt:P2892 ?umlscui .
     }
     """
-    print("... processing wikidata results")
+    logger.info("... processing wikidata results")
     result = wdi_core.WDItemEngine.execute_sparql_query(query_text, as_dataframe=True)
     result.to_csv("../data/doid-to-umls.csv", index=False)
     doid_to_umls = result.set_index("doid")["umlscui"].to_dict()
@@ -416,7 +438,9 @@ def main(args):
         .filter(pl.col("cui").is_in(list(doid_to_umls.values())))
         .drop_nulls("cui")
     )
-    print("... creating an adjacency matrix of diseases and their nearest neighbors")
+    logger.info(
+        "... creating an adjacency matrix of diseases and their nearest neighbors"
+    )
     # create a dictionary of doid to resource and subsumed to cui to do the same nearest neighbor mapping as above
     # concatenate in the useful xrefs from DO and the DO slim
     i = useful_xref.rename({"doid_code": "k", "resource_id": "v"})[["k", "v"]]
@@ -430,7 +454,7 @@ def main(args):
     slim_ids = set(do_slim_terms.keys())
 
     #### Make final map for Diseases and map them
-    print("... find disease nearest neighbors")
+    logger.info("... find disease nearest neighbors")
     dis_adj_df = dis_adj_df.unique().group_by("k").agg("v")
     dis_adj_list = dict(zip(dis_adj_df["k"].to_list(), dis_adj_df["v"].to_list()))
     # find the nearest neighbors
@@ -472,14 +496,14 @@ def main(args):
             )
             new_key = sort_sub[0]
             rekeyed_dis_subnets[new_key] = v
-    print("... Make final map for Diseases and map disease entities")
+    logger.info("... Make final map for Diseases and map disease entities")
     # Final map is just inverse of the subnets dict
     final_dis_map = dict()
 
     for k, v in rekeyed_dis_subnets.items():
         for val in v:
             final_dis_map[val] = k
-    print("... remap diseases to new ids")
+    logger.info("... remap diseases to new ids")
     # remap only items that exist in final_dis_map, otherwise add 'id' as 'new_id'
     diseases = (
         diseases.filter(pl.col("id").is_in(final_dis_map.keys()))
@@ -493,13 +517,13 @@ def main(args):
 
     # See how many instances of diseases mapped to 1 mesh ID had their ID changed through
     # SNOMED and DO-SLIM consolidation
-    print(
+    logger.info(
         f"... {diseases.drop_nulls('mesh_id').filter(~pl.col('mesh_id').is_in(pl.col('new_id')))['id'].n_unique():,} original CUIs"
     )
-    print(
+    logger.info(
         f"... {diseases.drop_nulls('mesh_id').filter(~pl.col('mesh_id').is_in(pl.col('new_id')))['mesh_id'].n_unique():,} Mapped to MeSH IDs"
     )
-    print(
+    logger.info(
         f"... {diseases.drop_nulls('mesh_id').filter(~pl.col('mesh_id').is_in(pl.col('new_id')))['new_id'].n_unique():,} Consolidated unique entitites"
     )
 
@@ -518,7 +542,7 @@ def main(args):
         pl.col("new_id").map_elements(lambda x: dis_source_map(x)).alias("id_source")
     )
     pickle.dump(final_dis_map, open("../data/disease_merge_map.pkl", "wb"))
-    print(
+    logger.info(
         f'... {(diseases.shape[0] - diseases["new_id"].n_unique()) / diseases.shape[0]:.2%} Reduction in Diseases. ({diseases.shape[0]:,} -> {diseases["new_id"].n_unique():,})'
     )
     rels = (
@@ -537,10 +561,10 @@ def main(args):
     ind_semmed_comp = inds.filter(
         pl.col("disease_new_id").is_in(disease_ids_semmed)
     ).shape[0]
-    print(
+    logger.info(
         f"... {num_ind_in_semmed/len(diseases_in_inds):.2%} of diseases in DC Indications mapped: {num_ind_in_semmed:,} of {len(diseases_in_inds):,}"
     )
-    print(
+    logger.info(
         f"... {(ind_semmed_comp/len(inds)):.2%} of Indications have mappable diseases: {ind_semmed_comp:,} of {len(inds):,}"
     )
     inds_dd = inds.unique(["compound_new_id", "disease_new_id"])
@@ -550,12 +574,12 @@ def main(args):
         pl.col("compound_new_id").is_in(new_cid)
         & pl.col("disease_new_id").is_in(new_dids)
     )
-    print(
+    logger.info(
         f"... {len(inds_in_semmed)/len(inds_dd):.2%} of indications have both compound and disease mappings ({len(inds_in_semmed):,} of {len(inds_dd):,})"
     )
 
     #### Add in Dates for indications ####
-    print("Get dates for drug approval indications")
+    logger.info("Get dates for drug approval indications")
     app = pl.read_csv(f"../data/drugcentral_approvals_{args.dc_date}.csv")
     app = (
         app.unique("approval")  # Remove NaN values
@@ -573,7 +597,7 @@ def main(args):
     )
 
     #### Rebuild the Nodes to new ID mappings
-    print("Rebuilding nodes to appropriate new ID maps")
+    logger.info("Rebuilding nodes to appropriate new ID maps")
     all_umls = set(nodes["id"])
     umls_set = all_umls.union(
         set(dc_maps.filter(pl.col("id_type") == "UMLSCUI")["identifier"])
@@ -589,7 +613,7 @@ def main(args):
         else:
             return "problem..."
 
-    print("... export node mappings")
+    logger.info("... export node mappings")
     pickle.dump(umls_set, open("../data/umls_id_set.pkl", "wb"))
     pickle.dump(mesh_set, open("../data/mesh_id_set.pkl", "wb"))
 
@@ -644,7 +668,7 @@ def main(args):
         )
         .filter(pl.col("len_label") > 1)["new_id"]
     )
-    print(f"... {len(problem_ids)} remaining identifiers with multiple labels")
+    logger.info(f"... {len(problem_ids)} remaining identifiers with multiple labels")
 
     #### fix other node-type conflicts
     edges = pl.read_parquet(f"../data/edges_{args.semmed_version}.parquet").rename(
@@ -755,7 +779,7 @@ def main(args):
     num_old_ids = new_nodes["id"].n_unique()
     num_new_ids = new_nodes["new_id"].n_unique()
 
-    print(
+    logger.info(
         f"Nodes reduced by {(num_old_ids-num_new_ids)/num_old_ids:.2%}; from {num_old_ids:,} -> {num_new_ids:,}."
     )
 
@@ -821,14 +845,14 @@ def main(args):
     )
 
     #### Map all the edges remaining
-    print("Map re-mapped nodes to the edges")
+    logger.info("Map re-mapped nodes to the edges")
     edges = edges.with_columns(
         pl.col("h_id").replace(final_node_map).alias("h_id"),
         pl.col("t_id").replace(final_node_map).alias("t_id"),
         pl.col("h_id").replace(final_node_label_map).alias("start_type"),
         pl.col("t_id").replace(final_node_label_map).alias("end_type"),
     )
-    print(
+    logger.info(
         "... Mapping Node Ids to the edges. Duplicated edges will be deleted. \
     This can take up to 30 minutes"
     )
@@ -850,9 +874,11 @@ def main(args):
 
     num_after = len(edges)
 
-    print(f"... There are: {num_before:,} Edges before node consolidation")
-    print(f"... There are: {num_after:,} Edges after node consolidation")
-    print(f"... A {((num_before - num_after) / num_before):.3%} reduction in edges")
+    logger.info(f"... There are: {num_before:,} Edges before node consolidation")
+    logger.info(f"... There are: {num_after:,} Edges after node consolidation")
+    logger.info(
+        f"... A {((num_before - num_after) / num_before):.3%} reduction in edges"
+    )
 
     # difference between edge head and tail ids and the new node ids
     assert (
@@ -865,7 +891,7 @@ def main(args):
     ), "There are some unmapped nodes in the edge file"
 
     #### Save files to the network
-    print("Saving Network files (consolidated nodes and edges)")
+    logger.info("Saving Network files (consolidated nodes and edges)")
     # export edge file
     edges.sort("edge").write_parquet(
         f"../data/edges_{args.semmed_version}_consolidated.parquet"
@@ -880,7 +906,9 @@ def main(args):
     pickle.dump(final_node_map, open("../data/node_id_merge_map.pkl", "wb"))
 
     #### Save relationship files for ML gold standard
-    print('Saving a seperate "indications" file for a Machine Learning gold standard')
+    logger.info(
+        'Saving a seperate "indications" file for a Machine Learning gold standard'
+    )
     # Do some rennaming of the columns before saving
     rels = rels.rename(
         {
@@ -898,7 +926,7 @@ def main(args):
     ).write_parquet("../data/indications_nodemerge.parquet")
     rels.write_parquet("../data/gold_standard_relationships_nodemerge.parquet")
 
-    print("Complete processing 02_Merge_Nodes_via_ID_xrefs.py\n")
+    logger.info("Complete processing 02_Merge_Nodes_via_ID_xrefs.py\n")
 
 
 if __name__ == "__main__":

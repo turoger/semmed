@@ -1,5 +1,7 @@
+import logging
 import os
 import pickle
+import sys
 import warnings
 
 import polars as pl
@@ -7,6 +9,19 @@ from tqdm import tqdm
 
 warnings.filterwarnings("ignore")
 import argparse
+
+# Set up logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter("[%(asctime)s] \t %(message)s", "%Y-%m-%d %H:%M:%S")
+
+# create console handler and set level to info
+ch = logging.StreamHandler(sys.stdout)
+ch.setLevel(logging.INFO)
+ch.setFormatter(formatter)
+
+# add ch to logger
+logger.addHandler(ch)
 
 
 def parse_args(args=None):
@@ -64,16 +79,16 @@ def parse_args(args=None):
 
 
 def main(args):
-    print("Running 07_Build_data_split.py")
-    print(f"--split_train_test_valid: {args.split_train_test_valid}")
-    print(
+    logger.info("Running 07_Build_data_split.py")
+    logger.info(f"--split_train_test_valid: {args.split_train_test_valid}")
+    logger.info(
         f"--split_hyperparameter_optimization: {args.split_hyperparameter_optimization}"
     )
-    print(f"--include_time: {args.include_time}")
-    print(f"changing directory to {args.base_dir}")
+    logger.info(f"--include_time: {args.include_time}")
+    logger.info(f"changing directory to {args.base_dir}")
     os.chdir(args.base_dir)
 
-    print(
+    logger.info(
         f"... splitting edges dataset up into train/test/validation, where train/test are triples in the 'present/past' and validation is 'future' of a given time point"
     )
 
@@ -142,7 +157,7 @@ def main(args):
                 include_header=False,
             )
 
-    print("Done running 07_Build_data_split.py\n")
+    logger.info("Done running 07_Build_data_split.py\n")
 
 
 def read_dataframes(file_dir: str) -> pl.DataFrame:

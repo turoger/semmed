@@ -1,6 +1,7 @@
 import argparse
 import gzip  # 2c
 import json  # 2d
+import logging
 import os  # 2abc
 import pickle  # 2abc
 import sys  # 2a
@@ -230,7 +231,7 @@ def main(args):
         try:
             id_to_year.update(r)
         except:
-            logger.info("... ... Did not update entry in the dictionary: ", r)
+            # logger.info(f"... ... Did not update entry in the dictionary: {r}")
             pass
 
     logger.info(f"... Number of entries in updated year dict: {len(id_to_year):,}")

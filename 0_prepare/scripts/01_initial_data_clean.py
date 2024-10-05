@@ -1,6 +1,7 @@
 import argparse
 import gc
 import logging
+import os
 import pickle
 import sys
 
@@ -213,19 +214,29 @@ def main(args):
         set(sem_df.filter(~pl.col("OBJECT_CUI").str.starts_with("C"))["OBJECT_CUI"])
     )
     logger.info(f"... Number of genes that need fixing: {len(genes_need_fixing):,}")
-    logger.info("... Querying mygene.info for Entrez Gene IDs")
-    mg_result = mg.getgenes(
-        list(genes_need_fixing), fields="symbol,name,umls.cui,HGNC", dotfield=True
-    )
-    logger.info("... Building Entrez to CUI map")
-    mg_result = (
-        pd.DataFrame(mg_result)
-        .query("notfound != True")[["_id", "HGNC", "name", "symbol", "umls.cui"]]
-        .explode("umls.cui")
-        .rename(columns={"_id": "CUI", "umls.cui": "umls_cui"})
-    )
-    mg_result2 = pl.DataFrame(mg_result)
 
+    # if mg_result not in ../data, then query mygene.info for the genes that need fixing
+    if not os.path.exists("../data/mg_result.parquet"):
+        logger.info("... Querying mygene.info for Entrez Gene IDs")
+        mg_result = mg.getgenes(
+            list(genes_need_fixing), fields="symbol,name,umls.cui,HGNC", dotfield=True
+        )
+        logger.info("... Building Entrez to CUI map")
+        mg_result = (
+            pd.DataFrame(mg_result)
+            .query("notfound != True")[["_id", "HGNC", "name", "symbol", "umls.cui"]]
+            .explode("umls.cui")
+            .rename(columns={"_id": "CUI", "umls.cui": "umls_cui"})
+        )
+        mg_result2 = pl.DataFrame(mg_result)
+        mg_result2.write_parquet("../data/mg_result.parquet")
+    else:
+        logger.info(
+            "... Reading Entrez to CUI map queried from mygene.info from ../data/mg_result.parquet"
+        )
+        mg_result2 = pl.read_parquet("../data/mg_result.parquet")
+
+    logger.info("... creating a Entrez to CUI map")
     e_to_cui = dict(
         zip(
             mg_result2.drop_nulls("umls_cui")["CUI"],
@@ -355,7 +366,7 @@ def main(args):
     pickle.dump(e_to_cui, open("../data/entrez_to_cui.pkl", "wb"))
     logger.info("Complete. \n")
     # clear variables to make space in memory
-    del mg_result
+
     del mg_result2
     del to_query_1
     del name_from_mygene

@@ -81,6 +81,13 @@ def parse_args(args=None):
         type=str,
         help="Year to split the hyperparameter optimization dataset. Default is 1987. Only used if split_hyperparameter_optimization is True.",
     )
+    parser.add_argument(
+        "-u",
+        "--umls_date",
+        default="2023AA",
+        type=str,
+        help="downloaded semmed version year followed by two capitalized, alphabetical characters",
+    )
 
     return parser.parse_args(args)
 
@@ -98,6 +105,8 @@ def main(args):
         "./scripts/01_build_hetnet_polars.py",
         "--semmed_version",
         args.semmed_version,
+        "--umls_date",
+        args.umls_date,
     ]
     for k, v in script_1_dict.items():
         if v == 1:
@@ -115,6 +124,8 @@ def main(args):
             args.semmed_version,
             "--dc_date",
             args.dc_date,
+            "--umls_date",
+            args.umls_date,
         ]
     )
 

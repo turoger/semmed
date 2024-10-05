@@ -1,6 +1,8 @@
 import datetime
+import logging
 import os
 import pickle
+import sys
 import warnings
 
 import polars as pl
@@ -9,6 +11,19 @@ from tqdm import tqdm
 warnings.filterwarnings("ignore")
 # from hetnet_ml import graph_tools as gt
 import argparse
+
+# Set up logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter("[%(asctime)s] \t %(message)s", "%Y-%m-%d %H:%M:%S")
+
+# create console handler and set level to info
+ch = logging.StreamHandler(sys.stdout)
+ch.setLevel(logging.INFO)
+ch.setFormatter(formatter)
+
+# add ch to logger
+logger.addHandler(ch)
 
 
 def parse_args(args=None):
@@ -70,18 +85,18 @@ def remove_colons(df: pl.DataFrame) -> pl.DataFrame:
 
 
 def main(args):
-    print("")
-    print("")
-    print("Running 06_Resolve_Network_Edges_by_Time")
+    logger.info("")
+    logger.info("")
+    logger.info("Running 06_Resolve_Network_Edges_by_Time")
 
     #### Build a final ID to year Map
-    print("... Load PMID to year from NLM, PMC, EUR, and EBI")
+    logger.info("... Load PMID to year from NLM, PMC, EUR, and EBI")
     nlm = pickle.load(open("../data/pmid_to_year_NLM.pkl", "rb"))
     pmc = pickle.load(open("../data/pmid_to_year_PMC.pkl", "rb"))
     eur = pickle.load(open("../data/pmid_to_year_Eur.pkl", "rb"))
     ebi = pickle.load(open("../data/pmid_to_year_EBI.pkl", "rb"))
 
-    print("... Reformatting all loaded PMID from str:str to str:ID")
+    logger.info("... Reformatting all loaded PMID from str:str to str:ID")
     # NLM
     for k, v in tqdm(nlm.items()):
         nlm[k] = int(v)
@@ -103,22 +118,22 @@ def main(args):
     id_to_year = {**eur, **nlm, **ebi, **pmc}
     id_to_year = {str(k): str(v) for k, v in id_to_year.items()}
 
-    print(f"... Getting nodes file")
+    logger.info(f"... Getting nodes file")
 
     nodes = pl.read_parquet(
         source=f"../data/nodes_{args.semmed_version}_cons_6_metanodes.parquet"
     )
-    print(f"... Getting edges file")
+    logger.info(f"... Getting edges file")
     edges = pl.read_parquet(
         source="../data/edges_VER43_R_cons_6_metanodes.parquet",
     )
 
-    print(f"... Getting indications file")
+    logger.info(f"... Getting indications file")
     indications = pl.read_parquet(
         source="../data/indications_nodemerge.parquet"
     ).drop_nulls("approval_year")
 
-    print(f"... adding publication dates to edges")
+    logger.info(f"... adding publication dates to edges")
     # add years to edges
     # turn pmids into a list so we can work with it
     # explode pmids
@@ -189,7 +204,7 @@ def main(args):
         e_filt.write_parquet(file=os.path.join(out_dir, "edges.parquet"))
         ind_filt.write_parquet(file=os.path.join(out_dir, "indications.parquet"))
 
-    print("Done running 06_Resolve_Network_Edges_by_Time.py\n")
+    logger.info("Done running 06_Resolve_Network_Edges_by_Time.py\n")
 
 
 if __name__ == "__main__":

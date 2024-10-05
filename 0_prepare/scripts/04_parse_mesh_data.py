@@ -1,6 +1,8 @@
 import argparse
+import logging
 import os
 import pickle
+import sys
 import urllib.request
 import xml.etree.ElementTree as ET
 from collections import defaultdict
@@ -49,16 +51,31 @@ def main(args):
 
     if not os.path.exists(supp_filename):
         logger.info(f"... Downloading supp{date}.xml")
-        urllib.request.urlretrieve(
-            f"https://nlmpubs.nlm.nih.gov/projects/mesh/{2023}/xmlmesh/supp{date}.xml",
-            filename=supp_filename,
-        )
+
+        if date != 2024:
+            urllib.request.urlretrieve(
+                f"https://nlmpubs.nlm.nih.gov/projects/mesh/{date}/xmlmesh/supp{date}.xml",
+                filename=supp_filename,
+            )
+        else:
+            urllib.request.urlretrieve(
+                f"https://nlmpubs.nlm.nih.gov/projects/mesh/{date}/xmlmesh/20240101/supp{date}.xml",
+                filename=supp_filename,
+            )
+
     if not os.path.exists(desc_filename):
         logger.info(f"... Downloading desc{date}.xml")
-        urllib.request.urlretrieve(
-            f"https://nlmpubs.nlm.nih.gov/projects/mesh/{2023}/xmlmesh/desc{date}.xml",
-            filename=desc_filename,
-        )
+
+        if date != 2024:
+            urllib.request.urlretrieve(
+                f"https://nlmpubs.nlm.nih.gov/projects/mesh/{date}/xmlmesh/desc{date}.xml",
+                filename=desc_filename,
+            )
+        else:
+            urllib.request.urlretrieve(
+                f"https://nlmpubs.nlm.nih.gov/projects/mesh/{date}/xmlmesh/20240101/desc{date}.xml",
+                filename=desc_filename,
+            )
 
     logger.info(f"... Get file roots")
     desc_root = ET.parse(

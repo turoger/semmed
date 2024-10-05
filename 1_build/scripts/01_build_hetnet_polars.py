@@ -2,6 +2,7 @@
 # Meant as a script to download everything without going through the notebook
 # This script will generate a preliminarily cleaned SemMed Dataset node and edges file
 import argparse
+import logging
 import os
 import sys
 
@@ -9,6 +10,19 @@ import polars as pl
 
 sys.path.append("../tools")
 import load_umls
+
+# Set up logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter("[%(asctime)s] \t %(message)s", "%Y-%m-%d %H:%M:%S")
+
+# create console handler and set level to info
+ch = logging.StreamHandler(sys.stdout)
+ch.setLevel(logging.INFO)
+ch.setFormatter(formatter)
+
+# add ch to logger
+logger.addHandler(ch)
 
 
 def parse_args(args=None):
@@ -51,16 +65,24 @@ def parse_args(args=None):
         action="store_true",
         help='Includes or removes direction component of metapath. i.e "CDpo>G" -> "CDpoG", "Cct>C" -> "CctC". Directionality cannot be applied if "convert_negative_relations" is False or "drop_negative_relations" is False',
     )
+    parser.add_argument(
+        "-u",
+        "--umls_date",
+        default="2023AA",
+        type=str,
+        help="downloaded semmed version year followed by two capitalized, alphabetical characters",
+    )
+
     return parser.parse_args(args)
 
 
 def main(args):
-    print(f"Running 01_build_hetnet_polars.py")
-    print(f"--semmed_version: {args.semmed_version}")
-    print(f"--drop_negative_relations: {args.drop_negative_relations}")
-    print(f"--convert_negative_relations: {args.convert_negative_relations}")
-    print(f"--include_direction: {args.include_direction}\n")
-    print(f"... Reading in SemMed Dataframe.")
+    logger.info(f"Running 01_build_hetnet_polars.py")
+    logger.info(f"--semmed_version: {args.semmed_version}")
+    logger.info(f"--drop_negative_relations: {args.drop_negative_relations}")
+    logger.info(f"--convert_negative_relations: {args.convert_negative_relations}")
+    logger.info(f"--include_direction: {args.include_direction}\n")
+    logger.info(f"... Reading in SemMed Dataframe.")
     # read dataframe
     sem_df = (
         pl.read_parquet(
@@ -84,25 +106,25 @@ def main(args):
         )
     )
     # some stats
-    print(f"... Rows: {sem_df.shape[0]:,}")
-    print(f"... Cols: {sem_df.shape[1]}")
-    print(f"... Column names: {sem_df.columns}")
+    logger.info(f"... Rows: {sem_df.shape[0]:,}")
+    logger.info(f"... Cols: {sem_df.shape[1]}")
+    logger.info(f"... Column names: {sem_df.columns}")
 
     # generate pmid df from edges
-    print("... Generating triple to PMID list")
+    logger.info("... Generating triple to PMID list")
     pmids = (
         sem_df.group_by(["SUBJECT_CUI", "PREDICATE", "OBJECT_CUI"])
         .agg(["PMID"])
         .with_columns(pl.col("PMID").list.unique())
         .with_columns(pl.col("PMID").list.len().alias("len_PMID"))
     )
-    print(f"Complete. \n")
-    print(f"Process node in SemMed")
+    logger.info(f"Complete. \n")
+    logger.info(f"Process node in SemMed")
     # fix issues with multiple semtypes per cui
     # umls abbreviations to semtype
-    print("... Creating mappings between UMLS abbreviations and semantic types")
+    logger.info("... Creating mappings between UMLS abbreviations and semantic types")
     abbv_to_type = dict()
-    with open("../data/SemanticTypes.txt") as fin:
+    with open("../data/SemTypes.txt") as fin:
         for line in fin:
             line = line.strip()
             lspt = line.split("|")
@@ -110,7 +132,7 @@ def main(args):
     type_to_abbv = {v: k for k, v in abbv_to_type.items()}
 
     # umls semtype to supertype mapping
-    print("... Creating mappings between UMLS semantic types and super types")
+    logger.info("... Creating mappings between UMLS semantic types and super types")
     abbv_to_super = dict()
     with open("../data/SemGroups.txt") as fin:
         for line in fin:
@@ -122,7 +144,7 @@ def main(args):
     # cells 15-26
     # Looked ups a few cuis with these and they are all of the living beings type,
     # so we will set these to that semtype
-    print("... fixing UMLS abbreviation mappings (hard coded)")
+    logger.info("... fixing UMLS abbreviation mappings (hard coded)")
     abbv_to_super["alga"] = "Living Beings"
     abbv_to_super["invt"] = "Living Beings"
     abbv_to_super["rich"] = "Living Beings"
@@ -133,11 +155,12 @@ def main(args):
     abbv_to_super["nsba"] = "Chemicals & Drugs"
     abbv_to_super["opco"] = "Chemicals & Drugs"
     abbv_to_super["strd"] = "Chemicals & Drugs"
+    abbv_to_super["vita"] = "Chemicals & Drugs"
     # these are Genes & Molecular Sequences
     abbv_to_super["C0030193"] = "Genes & Molecular Sequences"
 
     #
-    print("... Generating nodes file from edges")
+    logger.info("... Generating nodes file from edges")
     snodes = sem_df[["SUBJECT_CUI", "SUBJECT_NAME", "SUBJECT_SEMTYPE"]].rename(
         {"SUBJECT_CUI": "id", "SUBJECT_NAME": "name", "SUBJECT_SEMTYPE": "label"}
     )
@@ -149,18 +172,20 @@ def main(args):
         .unique()
         .with_columns(pl.col("label").replace(abbv_to_super))
     )
-    print(f"... Unique node types: {nodes['label'].unique().to_list()}")
-    print(
+    logger.info(f"... Unique node types: {nodes['label'].unique().to_list()}")
+    logger.info(
         f"... There are {nodes.shape[0]:,} nodes and {nodes['id'].unique().shape[0]:,} unique IDs"
     )
-    print(
+    logger.info(
         f"... {nodes.group_by('id').len().filter(pl.col('len')>1).shape[0]:,} IDs have been found to have multiple semantic types"
     )
 
     # fix semantic types using the UMLS Metathesaurus
-    print("... fix semantic types using UMLS")
-    print("... Loading MRSTY to make a CUI to TUI map")
-    mrsty = load_umls.open_mrsty()
+    logger.info("... fix semantic types using UMLS")
+    logger.info("... Loading MRSTY to make a CUI to TUI map")
+    mrsty = load_umls.open_mrsty(
+        f"../data/{args.umls_date}-full/{args.umls_date}/META/"
+    )
     cui_to_tui_df = (  # unique cui to [tui,tui] dataframe
         mrsty.unique()
         .group_by("CUI")
@@ -168,12 +193,12 @@ def main(args):
         .with_columns(pl.col("TUI").list.unique())
         .with_columns(pl.col("TUI").list.len().alias("len_tui"))
     )
-    print(f"... Loaded {cui_to_tui_df.shape[0]:,} CUI to TUI mappings")
-    print(
+    logger.info(f"... Loaded {cui_to_tui_df.shape[0]:,} CUI to TUI mappings")
+    logger.info(
         f"... Number of CUIs with more than one TUI: {cui_to_tui_df.filter(pl.col('len_tui')>1).shape[0]:,}"
     )
 
-    print("... Getting TUI to super semantic type map")
+    logger.info("... Getting TUI to super semantic type map")
     t_code_to_super = dict()
     with open("../data/SemGroups.txt") as fin:
         for line in fin:
@@ -199,9 +224,9 @@ def main(args):
         )
     )
     issues = cui_to_tui_df.filter(pl.col("len_super") > 1)
-    print(f"... There are {issues.shape[0]:,} CUIs with multiple Supertype")
+    logger.info(f"... There are {issues.shape[0]:,} CUIs with multiple Supertype")
 
-    print("... Fixing multiple super semantic type maps")
+    logger.info("... Fixing multiple super semantic type maps")
     issues = issues.with_columns(pl.col("super").list.sort())
     issue_types = [
         eval(i) for i in sorted(list(set([str(v) for v in issues["super"].to_list()])))
@@ -272,8 +297,8 @@ def main(args):
             )
         )
     )
-    print(f"... Total fixed semanic types: {len(fixed_sem):,}")
-    print(f"... Generating dictionary mappings to relabel semantic types")
+    logger.info(f"... Total fixed semanic types: {len(fixed_sem):,}")
+    logger.info(f"... Generating dictionary mappings to relabel semantic types")
     cui_to_tui_df = cui_to_tui_df[["CUI", "super"]].explode("super")
     cui_to_tui_dict = dict(
         zip(cui_to_tui_df["CUI"].to_list(), cui_to_tui_df["super"].to_list())
@@ -282,17 +307,19 @@ def main(args):
     before_len = len(nodes)
     nodes_dict = dict(zip(nodes["id"].to_list(), nodes["label"].to_list()))
     nodes_dict.update(cui_to_tui_dict)
-    print("... Remapping node types based on dictionary mappings")
+    logger.info("... Remapping node types based on dictionary mappings")
     nodes = nodes.unique("id").with_columns(
         pl.col("id").replace(nodes_dict).alias("label")
     )
-    print(f"... Went from {before_len:,} to {nodes.shape[0]:,} nodes after remapping")
-    print("Complete\n")
-    print("Build edge file")
-    print(f"... Number of predicates: {len(sem_df['PREDICATE'].unique())}")
+    logger.info(
+        f"... Went from {before_len:,} to {nodes.shape[0]:,} nodes after remapping"
+    )
+    logger.info("Complete\n")
+    logger.info("Build edge file")
+    logger.info(f"... Number of predicates: {len(sem_df['PREDICATE'].unique())}")
     # remove the predicate 1532.
     sem_df = sem_df.filter(pl.col("PREDICATE") != "1532")
-    print("... Initializing abbreviations for each semantic edge type")
+    logger.info("... Initializing abbreviations for each semantic edge type")
     p_abv = {
         "ADMINISTERED_TO": "at",
         "AFFECTS": "af",
@@ -358,7 +385,7 @@ def main(args):
         "lower_than": "lt",
         "same_as": "sa",
     }
-    print("... Initializing abbreviations for each semantic node type")
+    logger.info("... Initializing abbreviations for each semantic node type")
     # Run these by hand as there are few, and some don't lend themselves well to auto-generation
     sem_abv = {
         "Activities & Behaviors": "AB",
@@ -380,7 +407,7 @@ def main(args):
         "Procedures": "PR",
     }
 
-    print("... Initializing directions for each edge type")
+    logger.info("... Initializing directions for each edge type")
     edge_dir = {
         "ADMINISTERED_TO": "",
         "AFFECTS": "",
@@ -449,15 +476,15 @@ def main(args):
     }
 
     nodes = nodes.with_columns(pl.col("label").replace(sem_abv).alias("abv_label"))
-    print(f"...Building edge file")
+    logger.info(f"...Building edge file")
     edges = sem_df[["SUBJECT_CUI", "OBJECT_CUI", "PREDICATE"]]
     edges.columns = ["start_id", "end_id", "type"]
-    print(f"... Edges prior to dropping duplicates: {edges.shape[0]:,}")
+    logger.info(f"... Edges prior to dropping duplicates: {edges.shape[0]:,}")
     edges = edges.unique()
-    print(f"... Edges after dropping duplicates: {edges.shape[0]:,}")
+    logger.info(f"... Edges after dropping duplicates: {edges.shape[0]:,}")
     # check for corrupted predicates
     assert edges.filter(pl.col("type").is_in(p_abv.keys())).shape == edges.shape
-    print(f"... Mapping non-negative edges to their abbreviations")
+    logger.info(f"... Mapping non-negative edges to their abbreviations")
     edges = (  # mapping abbreviations to edge file
         edges.join(
             nodes[["id", "abv_label"]], left_on="start_id", right_on="id", how="left"
@@ -471,7 +498,7 @@ def main(args):
         )
     )
 
-    print(f"... Adding PMIDs to edges")
+    logger.info(f"... Adding PMIDs to edges")
     edges = edges.join(  # add PMIDs to triples
         pmids[["SUBJECT_CUI", "OBJECT_CUI", "PREDICATE", "PMID"]].rename(
             {
@@ -559,7 +586,9 @@ def main(args):
         and args.include_direction == False
     ):
         # drop negative relation
-        print("... Generating predicate abbreviations, and dropping negative relations")
+        logger.info(
+            "... Generating predicate abbreviations, and dropping negative relations"
+        )
         edges = edges.filter(pl.col("is_neg") == False).drop("is_neg")
         edges = edges.with_columns(
             (pl.col("start_type") + pl.col("type_type") + pl.col("end_type")).alias(
@@ -576,7 +605,7 @@ def main(args):
         and args.include_direction
     ):
         # drop negative and include direction
-        print(
+        logger.info(
             f"... Generating predicate abbreviations, dropping negative relations and including direction"
         )
         edges = edges.filter(pl.col("is_neg") == False).drop("is_neg")
@@ -609,7 +638,7 @@ def main(args):
         and args.convert_negative_relations == False
         and args.include_direction == False
     ):
-        print(f"... Generating predicate abbreviations")
+        logger.info(f"... Generating predicate abbreviations")
         edges = edges.with_columns(
             (pl.col("start_type") + pl.col("type_type") + pl.col("end_type")).alias(
                 "abbrev"
@@ -619,7 +648,7 @@ def main(args):
             ),
         )
 
-    print("... Regroup the PMIDs")
+    logger.info("... Regroup the PMIDs")
     edges = (
         edges.unique(
             subset=["start_id", "end_id", "type"]
@@ -643,20 +672,20 @@ def main(args):
         .agg("pmid")
     )
 
-    print(f"... # Nodes: {nodes.shape[0]:,}")
-    print(f"... # Edges: {edges.shape[0]:,}")
-    # print(f"# Edges (No Neg): {edges.filter(pl.col('is_neg')==False).shape[0]:,}")
-    print(f"... # Edges (Replace Neg):{edges_replace_neg.shape[0]:,}")
-    print(f"... Saving Nodes to disk")
+    logger.info(f"... # Nodes: {nodes.shape[0]:,}")
+    logger.info(f"... # Edges: {edges.shape[0]:,}")
+    # logger.info(f"# Edges (No Neg): {edges.filter(pl.col('is_neg')==False).shape[0]:,}")
+    logger.info(f"... # Edges (Replace Neg):{edges_replace_neg.shape[0]:,}")
+    logger.info(f"... Saving Nodes to disk")
     nodes.write_parquet(
         os.path.join("../data/", f"nodes_{args.semmed_version}.parquet")
     )
-    print(f"... Saving Edges to disk")
+    logger.info(f"... Saving Edges to disk")
     edges.write_parquet(
         os.path.join("../data/", f"edges_{args.semmed_version}.parquet")
     )
 
-    print('Completed "01_build_hetnet_polars.py"')
+    logger.info('Completed "01_build_hetnet_polars.py"')
 
 
 if __name__ == "__main__":

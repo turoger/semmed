@@ -256,7 +256,9 @@ fi
 #
 # run rest of the pipeline. Please check flags to make sure version drugcentral and semmed downloaded matches
 # 
-mamba run -n mini_semmed2 --no-capture-output python building.py --semmed_version $SEM_VER $DROP_NEGATIVE_EDGES $CONVERT_NEG $INCLUDE_DIRECTION $TIME $HPO $TTV --base_dir $BASE_DIR --dc_date $DC_DATE --hpo_year $HPO_YEAR
+mamba run -n mini_semmed2 --no-capture-output python building.py \
+--semmed_version $SEM_VER $DROP_NEGATIVE_EDGES $CONVERT_NEG $INCLUDE_DIRECTION \
+$TIME $HPO $TTV --base_dir $BASE_DIR --dc_date $DC_DATE --hpo_year $HPO_YEAR --umls_date $UMLS_DATE
 # conda run -n mini_semmed python ./scripts/01_build_hetnet_polars.py --semmed_version $SEM_VER $DROP_NEGATIVE_EDGES $CONVERT_NEG $INCLUDE_DIRECTION
 # conda run -n mini_semmed python ./scripts/02_Merge_Nodes_via_ID_xrefs_polars.py --dc_date $DC_DATE --semmed_version $SEM_VER
 # conda run -n mini_semmed python ./scripts/03_Condense_edge_semmantics_polars.py --semmed_version $SEM_VER

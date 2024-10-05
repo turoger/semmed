@@ -1,7 +1,22 @@
 import argparse
+import logging
+import sys
 
 import pandas as pd
 import polars as pl
+
+# Set up logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+formatter = logging.Formatter("[%(asctime)s] \t %(message)s", "%Y-%m-%d %H:%M:%S")
+
+# create console handler and set level to info
+ch = logging.StreamHandler(sys.stdout)
+ch.setLevel(logging.INFO)
+ch.setFormatter(formatter)
+
+# add ch to logger
+logger.addHandler(ch)
 
 
 def parse_args(args=None):
@@ -23,8 +38,8 @@ def parse_args(args=None):
 
 
 def main(args):
-    print(f"Running 04_filter_low_abundance_edges.py")
-    print("... Loading data")
+    logger.info(f"Running 04_filter_low_abundance_edges.py")
+    logger.info("... Loading data")
     #### Filter low abundance edges
     nodes = pl.read_parquet(
         f"../data/nodes_{args.semmed_version}_consolidated_condensed.parquet"
@@ -35,52 +50,52 @@ def main(args):
 
     comp = len(nodes.filter(pl.col("label") == "Chemicals & Drugs"))
     dis = len(nodes.filter(pl.col("label") == "Disorders"))
-    print(
+    logger.info(
         f"... {comp:,} Compounds x {dis:,} Diseases = {comp*dis:,} Compound-Disease combinations"
     )
     # get edge type counts, sorted by count
     counts = edges["r"].value_counts()
-    print(f"... There are {counts.shape[0]:,} unique edge types")
+    logger.info(f"... There are {counts.shape[0]:,} unique edge types")
 
-    print("... Filtering low abundance edges")
+    logger.info("... Filtering low abundance edges")
     cutoff = 0.001
-    print(f"... Total Number of edges: {len(edges):,}")
-    print(
+    logger.info(f"... Total Number of edges: {len(edges):,}")
+    logger.info(
         f"... Applying a {cutoff:%} cutoff to edges. Only edges greater than {cutoff*len(edges):,} will be retained."
     )
-    print(
+    logger.info(
         f"... Number of edge types with this cutoff: {len((filt_counts:=counts.filter(pl.col('count')>(cutoff*len(edges))))):,}"
     )
-    print(
+    logger.info(
         f"... Number of edges that remain with this cutoff: {len(filt_edges:=edges.filter(pl.col('r').is_in(filt_counts['r']))):,}"
     )
 
-    print("... Get the nodes from the filtered edge dataframe")
+    logger.info("... Get the nodes from the filtered edge dataframe")
     # get edge_ids from filtered edges
     edge_ids = set(filt_edges["h_id"].to_list()).union(
         set(filt_edges["t_id"].to_list())
     )
-    print(f"... Number of unique nodes in filtered edges: {len(edge_ids):,}")
+    logger.info(f"... Number of unique nodes in filtered edges: {len(edge_ids):,}")
 
     node_ids = set(nodes["id"].unique().to_list())
-    print(f"... Number of unique nodes in nodes: {len(node_ids):,}")
+    logger.info(f"... Number of unique nodes in nodes: {len(node_ids):,}")
     not_in_edges = node_ids - edge_ids
-    print(f"... Number of nodes not in edges: {len(not_in_edges):,}")
+    logger.info(f"... Number of nodes not in edges: {len(not_in_edges):,}")
     nodes = nodes.filter(pl.col("id").is_in(not_in_edges).not_())
     assert len(nodes) == len(edge_ids), "Number of nodes and edges should be the same"
-    print(f"... Number of nodes in nodes after filtering: {len(nodes):,}")
+    logger.info(f"... Number of nodes in nodes after filtering: {len(nodes):,}")
 
     filt_edge_sz = filt_edges.shape[0]
     filt_edges = filt_edges.filter(pl.col("h_id") != pl.col("t_id"))
 
-    print(
+    logger.info(
         f"... Number of edges prior to removal of self-referential edges: {filt_edge_sz:,}"
     )
-    print(
+    logger.info(
         f"... Number of edges after removal of self-referential edges: {filt_edges.shape[0]:,}"
     )
 
-    print("... remove overly general nodes (top most commonly occurring)")
+    logger.info("... remove overly general nodes (top most commonly occurring)")
 
     #### filter overly general nodes
     # These are from the 100 most common nodes, removing things that are too general to be useful
@@ -190,7 +205,7 @@ def main(args):
     ]
 
     nodes = nodes.filter(pl.col("name").is_in(too_general).not_())
-    print(
+    logger.info(
         f"... {nodes.shape[0]:,} Nodes remain after filtering out nodes that are too general"
     )
     prior_to_filtering = filt_edges.shape[0]
@@ -199,22 +214,22 @@ def main(args):
         pl.col("h_id").is_in(nodes["id"]), pl.col("t_id").is_in(nodes["id"])
     )
 
-    print(
+    logger.info(
         f"... Number of edges prior to filtering out nodes that are too general: {prior_to_filtering:,}"
     )
-    print(
+    logger.info(
         f"... Number of edges after filtering out nodes that are too general: {filt_edges.shape[0]:,}"
     )
     counts = filt_edges["n_pmids"].value_counts().sort("count", descending=True)
     x = counts.to_pandas()
     for i in range(1, 11):
-        print(
+        logger.info(
             "... Edges with at least {} unique PMIDs: {:,}".format(
                 i, (x.query("n_pmids >= @i")["count"].sum())
             )
         )
 
-    print("... Saving data")
+    logger.info("... Saving data")
     filt_edges.write_parquet(
         f"../data/edges_{args.semmed_version}_consolidated_condensed_filtered_001.parquet"
     )
@@ -222,7 +237,7 @@ def main(args):
         f"../data/nodes_{args.semmed_version}_consolidated_condensed_filtered_001.parquet"
     )
 
-    print("Complete processing 04_filter_low_abundance_edges.py\n")
+    logger.info("Complete processing 04_filter_low_abundance_edges.py\n")
 
 
 if __name__ == "__main__":

@@ -60,7 +60,7 @@ mamba activate mini_semmed2
 To integrate the dataset with [pykeen](https://github.com/pykeen/pykeen), do the following things:
 * clone the pykeen repository
 * copy `timeresolvedkg.py` file in this repository into your local pykeen repo at`pykeen/datasets/timeresolvedkg.py`; this file is a pykeen dataset class that will run the entire pipeline (if you supply the minimum flagged information) 
-* Add the file path to the `setup.cfg` entrypoint for pykeen. example:
+* Add the file path to the `setup.cfg` entrypoint for pykeen. Example:
 ```bash
 [options.entry_points]
 console_scripts = 

@@ -10,6 +10,8 @@ dependencies:
   - polars=0.20.16
   - pyarrow=15.0.2
   - requests=2.31.0
+  - wandb=0.18.1
+  - psycopg2=2.9.9
   - pip:
       - wikidataintegrator==0.9.30
       - gitpython==3.1.42
